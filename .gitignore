@@ -39,7 +39,7 @@ out/
 # Database & local data
 *.sqlite
 *.sqlite3
-data/
+/data/
 uploads/
 ml/artifacts/
 

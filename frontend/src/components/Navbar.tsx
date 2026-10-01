@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Film, Database } from 'lucide-react';
+import { Sparkles, Film, Database, Activity } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -8,7 +9,6 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { name: 'Discover', path: '/' },
     { name: 'Taste Discovery', path: '/taste-discovery' },
-    { name: 'Architecture', path: '/#architecture' },
   ];
 
   return (
@@ -40,30 +40,48 @@ export const Navbar: React.FC = () => {
           </span>
         </div>
 
-        {/* Primary Navigation */}
+        {/* Primary Navigation & Developer Utilities */}
         <nav className="flex items-center gap-6">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               to={link.path}
-              className={`text-sm font-medium transition-colors hover:text-luminous-cyan ${
+              className={cn(
+                'text-sm font-medium transition-colors hover:text-luminous-cyan',
                 location.pathname === link.path ? 'text-luminous-cyan font-semibold' : 'text-slate-300'
-              }`}
+              )}
             >
               {link.name}
             </Link>
           ))}
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 hover:text-luminous-teal transition-colors"
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>API Docs</span>
-          </a>
+
+          {/* Developer Tools */}
+          <div className="hidden sm:flex items-center gap-4 pl-4 border-l border-white/10">
+            <Link
+              to="/diagnostics"
+              className={cn(
+                'flex items-center gap-1.5 text-xs transition-colors hover:text-luminous-cyan',
+                location.pathname === '/diagnostics' ? 'text-luminous-cyan font-semibold' : 'text-slate-400'
+              )}
+              title="System Diagnostics & Probes"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Diagnostics</span>
+            </Link>
+            <a
+              href="http://localhost:8000/docs"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-luminous-teal transition-colors"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>API Docs</span>
+            </a>
+          </div>
         </nav>
       </div>
     </header>
   );
 };
+
+export default Navbar;
