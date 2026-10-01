@@ -1,4 +1,5 @@
 import pytest
+
 from app.db.session import check_db_connection
 
 

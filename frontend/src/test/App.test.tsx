@@ -25,4 +25,12 @@ describe('Veya Luma Frontend App', () => {
     expect(screen.getByText('Content-Based Scorer')).toBeInTheDocument();
     expect(screen.getByText('MMR & Diversity Caps')).toBeInTheDocument();
   });
+
+  it('renders the API diagnostic console with Zod & React Hook Form', () => {
+    render(<App />);
+    expect(
+      screen.getByText('API Diagnostic Probe Console')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Execute Endpoint Probe')).toBeInTheDocument();
+  });
 });

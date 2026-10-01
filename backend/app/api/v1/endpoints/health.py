@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+
 from fastapi import APIRouter, status
+
 from app.core.config import settings
 from app.db.session import check_db_connection
 from app.schemas.health import HealthResponse

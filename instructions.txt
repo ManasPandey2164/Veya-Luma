@@ -1,0 +1,116 @@
+# Project Engineering Rules
+
+## General
+
+This is a production-oriented personalized movie discovery application.
+
+It is NOT an OTT platform.
+
+Never add movie streaming functionality.
+
+## Code quality
+
+Do not:
+
+* create giant files
+* duplicate logic
+* hardcode secrets
+* bypass validation
+* suppress errors
+* use fake implementations
+* leave broken imports
+* add unnecessary dependencies
+
+Prefer:
+
+* small modules
+* clear interfaces
+* typed functions
+* testable services
+* dependency injection
+* separation of concerns
+
+## Backend
+
+FastAPI route handlers must remain thin.
+
+Business logic belongs in services.
+
+Database access belongs in repositories/services where appropriate.
+
+Do not expose SQLAlchemy models directly as API contracts.
+
+Use Pydantic schemas.
+
+## Recommendation system
+
+Never put recommendation algorithms directly inside API routes.
+
+Separate:
+
+candidate generation
+ranking
+filtering
+diversification
+explanation
+
+Keep recommendation algorithms replaceable.
+
+## ML
+
+Do not use an LLM as the entire recommendation engine.
+
+LLMs may interpret natural-language intent.
+
+The actual recommendation engine must use structured retrieval/ranking and user behaviour.
+
+## Database
+
+All schema changes must use Alembic.
+
+Do not manually modify production schema.
+
+Use indexes based on actual access patterns.
+
+## Security
+
+Never commit secrets.
+
+Never log:
+
+* passwords
+* tokens
+* API keys
+* sensitive user data
+
+## Testing
+
+Every significant feature requires tests.
+
+Do not declare a feature complete until it works end-to-end.
+
+## AI agent behaviour
+
+Before changing architecture, inspect:
+
+PROJECT.md
+DECISIONS.md
+ARCHITECTURE.md
+RECOMMENDATION.md
+DESIGN.md
+
+If a requested change conflicts with an existing architectural decision, explain the conflict before making the change.
+
+Do not silently redesign the system.
+
+Before large changes:
+
+* explain the plan
+* implement incrementally
+* run tests
+* inspect the diff
+* fix failures
+
+Do not modify unrelated files.
+
+Do not rewrite working code unnecessarily.

@@ -1,5 +1,6 @@
 import React from 'react';
 import { HealthStatus } from '../components/HealthStatus';
+import { DiagnosticConsole } from '../components/DiagnosticConsole';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -52,9 +53,10 @@ export const HomePage: React.FC = () => {
           intuitive taste learning rather than exhaustive questionnaires.
         </p>
 
-        {/* Live System Connectivity Widget */}
-        <div className="mt-10">
+        {/* Live System Connectivity & Diagnostic Probe */}
+        <div className="mt-10 space-y-6">
           <HealthStatus />
+          <DiagnosticConsole />
         </div>
       </section>
 

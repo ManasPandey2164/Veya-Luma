@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1.endpoints.health import get_health
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.api.v1.endpoints.health import get_health
+from app.db.session import async_engine
 
 
 @asynccontextmanager
@@ -13,6 +16,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle management."""
     setup_logging()
     yield
+    await async_engine.dispose()
 
 
 app = FastAPI(
