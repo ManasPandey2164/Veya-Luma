@@ -422,6 +422,21 @@ const GENRE_KEY_ALIASES: Record<string, string> = {
   arthouse: 'mystery',
   philosophy: 'mystery',
   crime: 'thriller',
+  psychological: 'thriller',
+  suspense: 'thriller',
+  action: 'adventure',
+  animation: 'adventure',
+  animated: 'adventure',
+  anime: 'sci-fi',
+  fantasy: 'sci-fi',
+  documentary: 'drama',
+  biopic: 'drama',
+  historical: 'drama',
+  history: 'drama',
+  war: 'drama',
+  music: 'romance',
+  musical: 'romance',
+  western: 'adventure',
 };
 
 export interface ResolveAtmosphereOptions {
@@ -441,7 +456,7 @@ export function resolveCinematicAtmosphere(options?: ResolveAtmosphereOptions): 
   }
 
   const normalized = options.genre.trim().toLowerCase();
-  const canonicalKey = GENRE_KEY_ALIASES[normalized];
+  const canonicalKey = GENRE_KEY_ALIASES[normalized] || (GENRE_ATMOSPHERE_PROFILES[normalized] ? normalized : undefined);
 
   if (!canonicalKey || !GENRE_ATMOSPHERE_PROFILES[canonicalKey]) {
     return DEFAULT_ATMOSPHERE_PROFILE[baseTheme];
@@ -449,4 +464,19 @@ export function resolveCinematicAtmosphere(options?: ResolveAtmosphereOptions): 
 
   const profile = GENRE_ATMOSPHERE_PROFILES[canonicalKey];
   return profile[baseTheme];
+}
+
+/**
+ * Maps resolved atmospheric tokens to standardized CSS custom properties.
+ * Exposes core accents, glows, surface tints, radial gradients, and borders.
+ */
+export function getAtmosphereCssVariables(tokens: AtmosphereTokens): Record<string, string> {
+  return {
+    '--vl-accent': tokens.accent,
+    '--vl-accent-secondary': tokens.secondaryAccent,
+    '--vl-atmosphere-glow': tokens.glowColor,
+    '--vl-atmosphere-surface': tokens.surfaceTint,
+    '--vl-atmosphere-gradient': tokens.gradient.radial,
+    '--vl-atmosphere-border': tokens.gradient.border,
+  };
 }

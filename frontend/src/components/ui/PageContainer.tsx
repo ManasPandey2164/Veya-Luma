@@ -4,7 +4,7 @@ import { cn } from '../../utils/cn';
 export type PageMaxWidth = 'standard' | 'wide' | 'narrow' | 'full';
 export type PagePaddingY = 'none' | 'sm' | 'md' | 'lg' | 'hero';
 
-export interface PageContainerProps {
+export interface PageContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   maxWidth?: PageMaxWidth;
   paddingY?: PagePaddingY;
   gutters?: boolean;
@@ -20,6 +20,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   withAtmosphere = false,
   className,
   children,
+  ...props
 }) => {
   const maxWidthStyles: Record<PageMaxWidth, string> = {
     standard: 'max-w-[1320px]',
@@ -39,18 +40,23 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   return (
     <div
       className={cn(
-        'w-full mx-auto relative',
+        'w-full mx-auto relative isolate',
         maxWidthStyles[maxWidth],
         paddingYStyles[paddingY],
         gutters && 'px-6 sm:px-8 md:px-12 lg:px-16',
         className
       )}
+      {...props}
     >
       {withAtmosphere && (
-        <>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-cosmic-glow pointer-events-none -z-10" />
-          <div className="absolute top-1/4 right-0 w-[400px] h-[400px] bg-solar-flare pointer-events-none -z-10" />
-        </>
+        <div
+          data-testid="page-container-atmosphere"
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[360px] pointer-events-none z-0 transition-all duration-700 opacity-25 dark:opacity-75 blur-3xl"
+          style={{
+            background: 'var(--vl-atmosphere-gradient)',
+          }}
+          aria-hidden="true"
+        />
       )}
       {children}
     </div>

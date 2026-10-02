@@ -14,6 +14,8 @@ import { PreferencesPage } from '../pages/PreferencesPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { AccountPage } from '../pages/AccountPage';
 
+import { LibraryProvider } from '../context';
+
 afterEach(() => {
   cleanup();
 });
@@ -29,7 +31,8 @@ function renderWithRouter(initialEntry: string) {
   const queryClient = createTestQueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialEntry]}>
+      <LibraryProvider>
+        <MemoryRouter initialEntries={[initialEntry]}>
         <AppShell>
           <Routes>
             <Route path="/" element={<DiscoverPage />} />
@@ -50,8 +53,9 @@ function renderWithRouter(initialEntry: string) {
           </Routes>
         </AppShell>
       </MemoryRouter>
-    </QueryClientProvider>
-  );
+    </LibraryProvider>
+  </QueryClientProvider>
+);
 }
 
 describe('Veya Luma — Application Shell, Routing & Page States', () => {

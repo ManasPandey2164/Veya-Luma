@@ -16,6 +16,20 @@ export const StateSwitcher: React.FC<StateSwitcherProps> = ({
   onStateChange,
   className,
 }) => {
+  const isTest =
+    (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') ||
+    import.meta.env.MODE === 'test';
+
+  const isDevDebug =
+    typeof window !== 'undefined' &&
+    (new URLSearchParams(window.location.search).has('dev') ||
+      new URLSearchParams(window.location.search).has('debug') ||
+      Boolean((window as unknown as { __ENABLE_STATE_SWITCHER__?: boolean }).__ENABLE_STATE_SWITCHER__));
+
+  if (!isTest && !isDevDebug) {
+    return null;
+  }
+
   const states: { id: PageViewState; label: string }[] = [
     { id: 'populated', label: 'Populated' },
     { id: 'loading', label: 'Loading' },

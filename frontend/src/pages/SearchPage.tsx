@@ -18,6 +18,7 @@ import {
   EmptyState,
   ErrorState,
 } from '../components/ui';
+import { useLibraryOptional, useSetAtmosphere } from '../context';
 
 export const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,7 +26,11 @@ export const SearchPage: React.FC = () => {
   const [query, setQuery] = useState(urlQuery);
   const [pageState, setPageState] = usePageState('populated');
 
-  // Interactive watchlist and favorites tracking for local simulation
+  // Search operates within a clean, neutral cinematic atmosphere
+  useSetAtmosphere(null);
+
+  // Centralized shared library context with fallback for standalone test harnesses
+  const library = useLibraryOptional();
   const [watchlistMap, setWatchlistMap] = useState<Record<string, boolean>>(() =>
     MOVIE_FIXTURES.reduce(
       (acc, movie) => ({
@@ -46,18 +51,36 @@ export const SearchPage: React.FC = () => {
     )
   );
 
+  const isMovieWatchlisted = (movieId: string): boolean => {
+    if (library) return library.isWatchlisted(movieId);
+    return watchlistMap[movieId] ?? false;
+  };
+
+  const isMovieFavorite = (movieId: string): boolean => {
+    if (library) return library.isFavourite(movieId);
+    return favoritesMap[movieId] ?? false;
+  };
+
   const toggleWatchlist = (movieId: string) => {
-    setWatchlistMap((prev) => ({
-      ...prev,
-      [movieId]: !prev[movieId],
-    }));
+    if (library) {
+      library.toggleWatchlist(movieId);
+    } else {
+      setWatchlistMap((prev) => ({
+        ...prev,
+        [movieId]: !prev[movieId],
+      }));
+    }
   };
 
   const toggleFavorite = (movieId: string) => {
-    setFavoritesMap((prev) => ({
-      ...prev,
-      [movieId]: !prev[movieId],
-    }));
+    if (library) {
+      library.toggleFavourite(movieId);
+    } else {
+      setFavoritesMap((prev) => ({
+        ...prev,
+        [movieId]: !prev[movieId],
+      }));
+    }
   };
 
   // Synchronize internal query state with URL parameter (supports back/forward navigation)
@@ -198,8 +221,8 @@ export const SearchPage: React.FC = () => {
                     key={movie.id}
                     movie={movie}
                     to={`/movies/${movie.id}`}
-                    isWatchlisted={watchlistMap[movie.id]}
-                    isFavorite={favoritesMap[movie.id]}
+                    isWatchlisted={isMovieWatchlisted(movie.id)}
+                    isFavorite={isMovieFavorite(movie.id)}
                     onWatchlistToggle={toggleWatchlist}
                     onFavoriteToggle={toggleFavorite}
                   />
@@ -410,8 +433,8 @@ export const SearchPage: React.FC = () => {
                       key={movie.id}
                       movie={movie}
                       to={`/movies/${movie.id}`}
-                      isWatchlisted={watchlistMap[movie.id]}
-                      isFavorite={favoritesMap[movie.id]}
+                      isWatchlisted={isMovieWatchlisted(movie.id)}
+                      isFavorite={isMovieFavorite(movie.id)}
                       onWatchlistToggle={toggleWatchlist}
                       onFavoriteToggle={toggleFavorite}
                     />

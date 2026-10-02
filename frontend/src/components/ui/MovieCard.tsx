@@ -74,10 +74,10 @@ export const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   const cardClasses = cn(
-    'group relative flex flex-col justify-end overflow-hidden rounded-xl bg-obsidian-surface border transition-all duration-300 ease-card select-none cursor-pointer',
+    'group relative flex flex-col justify-end overflow-hidden rounded-xl bg-obsidian-surface border transition-all duration-300 ease-card select-none cursor-pointer preserve-dark shadow-[0_4px_16px_rgba(20,23,31,0.06)] dark:shadow-none',
     isSelected
       ? 'border-luminous-cyan ring-2 ring-luminous-cyan/80 shadow-cyan-glow scale-[1.02]'
-      : 'border-white/10 hover:scale-[1.02] hover:border-luminous-cyan/40 hover:shadow-cyan-glow',
+      : 'border-black/[0.08] dark:border-white/10 hover:scale-[1.02] hover:border-luminous-cyan/40 hover:shadow-cyan-glow',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-luminous-cyan/70 focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian-void',
     aspectRatio === 'poster' ? 'aspect-[2/3] w-full min-w-[170px]' : 'aspect-video w-full min-w-[280px]',
     className

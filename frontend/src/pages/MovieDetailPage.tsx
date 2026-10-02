@@ -19,6 +19,7 @@ import {
   getRelatedMovieFixtures,
   type MovieFixture,
 } from '../fixtures/movieFixtures';
+import { useLibraryOptional, useSetAtmosphere, useAtmosphere } from '../context';
 import {
   PageContainer,
   GlassPanel,
@@ -43,15 +44,26 @@ export const MovieDetailPage: React.FC = () => {
   const movie: MovieFixture | undefined = movieId ? getMovieFixtureById(movieId) : undefined;
   const relatedMovies = movie ? getRelatedMovieFixtures(movie.id) : [];
 
-  // Local interaction states for mock simulation with visual feedback
-  const [isWatchlisted, setIsWatchlisted] = React.useState(false);
-  const [isFavorite, setIsFavorite] = React.useState(false);
+  // Contextual cinematic atmosphere resolved directly from the film's primary genre
+  const primaryGenre = movie?.genres[0] || null;
+  const { tokens } = useAtmosphere();
+  useSetAtmosphere(primaryGenre);
+
+  // Centralized shared library context with fallback for standalone tests
+  const libraryContext = useLibraryOptional();
+
+  // Local fallback interaction states
+  const [localWatchlisted, setLocalWatchlisted] = React.useState(false);
+  const [localFavorite, setLocalFavorite] = React.useState(false);
   const [feedbackNotice, setFeedbackNotice] = React.useState<string | null>(null);
+
+  const isWatchlisted = libraryContext && movie ? libraryContext.isWatchlisted(movie.id) : localWatchlisted;
+  const isFavorite = libraryContext && movie ? libraryContext.isFavourite(movie.id) : localFavorite;
 
   React.useEffect(() => {
     if (movie) {
-      setIsWatchlisted(Boolean(movie.isWatchlisted));
-      setIsFavorite(Boolean(movie.isFavorite));
+      setLocalWatchlisted(Boolean(movie.isWatchlisted));
+      setLocalFavorite(Boolean(movie.isFavorite));
       setFeedbackNotice(null);
       if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
         window.scrollTo(0, 0);
@@ -61,21 +73,37 @@ export const MovieDetailPage: React.FC = () => {
 
   const handleToggleWatchlist = () => {
     if (!movie) return;
-    const nextState = !isWatchlisted;
-    setIsWatchlisted(nextState);
-    setFeedbackNotice(
-      nextState ? `Saved "${movie.title}" to Watchlist` : `Removed "${movie.title}" from Watchlist`
-    );
+    if (libraryContext) {
+      const willBeWatchlisted = !libraryContext.isWatchlisted(movie.id);
+      libraryContext.toggleWatchlist(movie.id);
+      setFeedbackNotice(
+        willBeWatchlisted ? `Saved "${movie.title}" to Watchlist` : `Removed "${movie.title}" from Watchlist`
+      );
+    } else {
+      const nextState = !localWatchlisted;
+      setLocalWatchlisted(nextState);
+      setFeedbackNotice(
+        nextState ? `Saved "${movie.title}" to Watchlist` : `Removed "${movie.title}" from Watchlist`
+      );
+    }
     setTimeout(() => setFeedbackNotice(null), 3500);
   };
 
   const handleToggleFavorite = () => {
     if (!movie) return;
-    const nextState = !isFavorite;
-    setIsFavorite(nextState);
-    setFeedbackNotice(
-      nextState ? `Added "${movie.title}" to Favourites` : `Removed "${movie.title}" from Favourites`
-    );
+    if (libraryContext) {
+      const willBeFavorite = !libraryContext.isFavourite(movie.id);
+      libraryContext.toggleFavourite(movie.id);
+      setFeedbackNotice(
+        willBeFavorite ? `Added "${movie.title}" to Favourites` : `Removed "${movie.title}" from Favourites`
+      );
+    } else {
+      const nextState = !localFavorite;
+      setLocalFavorite(nextState);
+      setFeedbackNotice(
+        nextState ? `Added "${movie.title}" to Favourites` : `Removed "${movie.title}" from Favourites`
+      );
+    }
     setTimeout(() => setFeedbackNotice(null), 3500);
   };
 
@@ -120,11 +148,25 @@ export const MovieDetailPage: React.FC = () => {
 
       {pageState === 'populated' && movie && (
         <div className="space-y-12 pb-16">
-          {/* 1. CINEMATIC HERO SECTION */}
-          <section
-            aria-label={`${movie.title} Dossier Presentation`}
-            className="relative w-full overflow-hidden rounded-2xl md:rounded-3xl border border-white/10 bg-obsidian-surface shadow-2xl"
-          >
+          {/* 1. CINEMATIC HERO SECTION WITH AMBIENT ATMOSPHERIC STAGE GLOW */}
+          <div className="relative">
+            {/* Contextual Genre Bloom radiating around and behind the hero */}
+            <div
+              className="absolute -inset-2 sm:-inset-6 rounded-3xl blur-2xl pointer-events-none opacity-40 transition-all duration-700 -z-0"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 50%, var(--vl-atmosphere-glow) 0%, transparent 70%)',
+              }}
+              aria-hidden="true"
+            />
+
+            <section
+              aria-label={`${movie.title} Dossier Presentation`}
+              className="preserve-dark relative z-10 w-full overflow-hidden rounded-2xl md:rounded-3xl border border-white/10 bg-obsidian-surface shadow-2xl transition-all duration-700"
+              style={{
+                borderColor: 'var(--vl-atmosphere-glow)',
+                boxShadow: '0 20px 60px -15px var(--vl-atmosphere-glow)',
+              }}
+            >
             {/* Full-width Panoramic Backdrop Image */}
             <div className="absolute inset-0 z-0">
               <img
@@ -132,6 +174,12 @@ export const MovieDetailPage: React.FC = () => {
                 alt={`${movie.title} backdrop`}
                 className="w-full h-full object-cover object-center filter brightness-[0.70]"
                 loading="eager"
+              />
+              {/* Subtle ambient atmospheric color bleed */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-20 mix-blend-screen"
+                style={{ background: 'var(--vl-atmosphere-gradient)' }}
+                aria-hidden="true"
               />
               {/* Controlled Atmospheric Vignette Gradients */}
               <div className="absolute inset-0 bg-gradient-to-t from-obsidian-void via-obsidian-void/80 to-transparent pointer-events-none" />
@@ -144,7 +192,10 @@ export const MovieDetailPage: React.FC = () => {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
                 {/* Poster Artwork Column */}
                 <div className="lg:col-span-4 w-full max-w-[280px] sm:max-w-[320px] mx-auto lg:mx-0">
-                  <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-obsidian-card group">
+                  <div
+                    className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden border border-white/15 shadow-2xl bg-obsidian-card group transition-all duration-500"
+                    style={{ borderColor: 'var(--vl-atmosphere-glow)' }}
+                  >
                     <img
                       src={movie.poster}
                       alt={movie.title}
@@ -168,7 +219,7 @@ export const MovieDetailPage: React.FC = () => {
                 <div className="lg:col-span-8 flex flex-col justify-end">
                   {/* Eyebrow Dossier Classification */}
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-telemetry text-luminous-cyan">
+                    <span className="text-telemetry font-semibold" style={{ color: 'var(--vl-accent)' }}>
                       CINEMATIC DOSSIER • {movie.genres.join(' / ')}
                     </span>
                   </div>
@@ -254,6 +305,7 @@ export const MovieDetailPage: React.FC = () => {
               </div>
             </div>
           </section>
+        </div>
 
           {/* 2. EDITORIAL INFORMATION, TAXONOMY & CAST */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -377,16 +429,23 @@ export const MovieDetailPage: React.FC = () => {
                 elevation="plate"
                 padding="lg"
                 rounded="2xl"
-                className="space-y-4 border-luminous-cyan/30 shadow-cyan-glow"
+                className="space-y-4 border transition-all duration-500"
+                style={{
+                  borderColor: 'var(--vl-atmosphere-glow)',
+                  boxShadow: '0 4px 25px -5px var(--vl-atmosphere-glow)',
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-luminous-cyan" />
+                    <ShieldCheck className="w-4 h-4" style={{ color: 'var(--vl-accent)' }} />
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-white font-sans">
                       Algorithmic Transparency Breakdown
                     </h2>
                   </div>
-                  <Badge variant="cyan" size="sm">
+                  <Badge
+                    variant={tokens.badgeVariant === 'default' ? 'cyan' : tokens.badgeVariant}
+                    size="sm"
+                  >
                     Fixture Preview
                   </Badge>
                 </div>
@@ -417,8 +476,7 @@ export const MovieDetailPage: React.FC = () => {
                 )}
 
                 <p className="text-[11px] text-slate-400 font-sans italic border-t border-white/10 pt-3">
-                  Note: Explanations are development fixture content demonstrating the Stage 1 transparent
-                  recommendation contract.
+                  Note: Curatorial explanations and divergence notes reflect the transparent recommendation contract.
                 </p>
               </GlassPanel>
 
@@ -442,12 +500,17 @@ export const MovieDetailPage: React.FC = () => {
                     <div key={axis} className="space-y-1">
                       <div className="flex items-center justify-between text-xs font-sans">
                         <span className="text-slate-300 font-medium">{axis}</span>
-                        <span className="text-luminous-cyan font-semibold">{score}%</span>
+                        <span className="font-semibold transition-colors" style={{ color: 'var(--vl-accent)' }}>
+                          {score}%
+                        </span>
                       </div>
                       <div className="w-full bg-obsidian-plate h-1.5 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-luminous-cyan to-luminous-ultraviolet"
-                          style={{ width: `${score}%` }}
+                          className="h-full transition-all duration-500"
+                          style={{
+                            width: `${score}%`,
+                            background: 'linear-gradient(to right, var(--vl-accent), var(--vl-accent-secondary))',
+                          }}
                         />
                       </div>
                       <span className="text-[10px] text-slate-400 font-sans block">{note}</span>

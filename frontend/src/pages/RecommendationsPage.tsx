@@ -18,14 +18,21 @@ import {
   ErrorState,
 } from '../components/ui';
 
+import { usePreferences, useSetAtmosphere, useLibraryOptional } from '../context';
+
 export const RecommendationsPage: React.FC = () => {
   const [pageState, setPageState] = usePageState('populated');
   const navigate = useNavigate();
+  const { tasteState } = usePreferences();
+  const library = useLibraryOptional();
+  const primaryGenre = tasteState?.selectedGenres?.[0] || null;
+  useSetAtmosphere(primaryGenre);
 
   return (
     <PageContainer maxWidth="standard" paddingY="md" withAtmosphere>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <SectionHeader
+          as="h1"
           eyebrow="DIMENSIONAL COGNITIVE MATCH"
           title="Your Recommendations"
           description="Films generated through content-based similarity, auteur resonance, and your calibrated preference vectors."
@@ -130,6 +137,11 @@ export const RecommendationsPage: React.FC = () => {
                 <MovieCard
                   key={movie.id}
                   movie={movie}
+                  to={`/movies/${movie.id}`}
+                  isWatchlisted={library ? library.isWatchlisted(movie.id) : Boolean(movie.isWatchlisted)}
+                  isFavorite={library ? library.isFavourite(movie.id) : Boolean(movie.isFavorite)}
+                  onWatchlistToggle={(id) => library?.toggleWatchlist(id)}
+                  onFavoriteToggle={(id) => library?.toggleFavourite(id)}
                   onClick={(id) => navigate(`/movies/${id}`)}
                   actionSlot={
                     movie.explanation?.whyRecommended ? (

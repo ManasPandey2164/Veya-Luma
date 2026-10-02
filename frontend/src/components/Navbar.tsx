@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Sliders, User, Compass, Sparkles, Film, Bookmark, Settings, Activity } from 'lucide-react';
+import { Search, Sliders, User, Compass, Sparkles, Film, Bookmark, Settings } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { CelestialPrism } from './ui/CelestialPrism';
 
@@ -34,21 +34,21 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full px-4 sm:px-6 py-3.5">
-      <div className="max-w-[1360px] mx-auto flex items-center justify-between glass-chrome rounded-full px-5 py-2.5 border border-white/10 shadow-2xl backdrop-blur-2xl">
+      <div className="max-w-[1360px] mx-auto flex items-center justify-between glass-chrome rounded-full px-5 py-2.5 border border-black/[0.06] dark:border-white/10 shadow-[0_4px_24px_-4px_rgba(20,23,31,0.06)] dark:shadow-2xl backdrop-blur-2xl">
         {/* Brand Mark & Clear Platform Identity */}
         <Link
           to="/discover"
           className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-luminous-cyan rounded-full p-1"
           aria-label="Veya Luma — Personalized Movie Discovery Platform"
         >
-          <div className="w-8 h-8 rounded-full bg-obsidian-surface border border-luminous-cyan/30 flex items-center justify-center p-1 group-hover:border-luminous-cyan group-hover:shadow-cyan-glow transition-all duration-300">
+          <div className="w-8 h-8 rounded-full bg-white dark:bg-obsidian-surface border border-luminous-cyan/40 flex items-center justify-center p-1 group-hover:border-luminous-cyan group-hover:shadow-cyan-glow transition-all duration-300 shadow-sm dark:shadow-none">
             <CelestialPrism size={18} />
           </div>
           <div className="flex flex-col">
-            <span className="font-editorial text-lg md:text-xl font-bold tracking-tight text-white group-hover:text-luminous-cyan transition-colors leading-none">
+            <span className="font-editorial text-lg md:text-xl font-bold tracking-tight text-theme-primary group-hover:text-luminous-cyan transition-colors leading-none">
               Veya Luma
             </span>
-            <span className="text-[10px] text-slate-400 font-sans tracking-wide uppercase font-semibold leading-tight mt-0.5">
+            <span className="text-[10px] text-theme-muted font-sans tracking-[0.14em] uppercase font-bold leading-tight mt-0.5">
               Movie Discovery
             </span>
           </div>
@@ -57,7 +57,7 @@ export const Navbar: React.FC = () => {
         {/* Primary Desktop Navigation */}
         <nav
           aria-label="Primary Navigation"
-          className="hidden lg:flex items-center gap-1 bg-obsidian-surface/60 rounded-full px-2 py-1 border border-white/5"
+          className="hidden lg:flex items-center gap-1 bg-black/[0.03] dark:bg-obsidian-surface/60 rounded-full px-1.5 py-1 border border-black/[0.04] dark:border-white/5"
         >
           {primaryNav.map((item) => {
             const active = isPrimaryActive(item.path);
@@ -68,8 +68,8 @@ export const Navbar: React.FC = () => {
                 className={cn(
                   'px-3.5 py-1.5 rounded-full text-xs font-medium font-sans transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-luminous-cyan',
                   active
-                    ? 'bg-luminous-cyan text-obsidian-void font-semibold shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                    ? 'bg-white text-slate-950 font-semibold shadow-[0_1px_4px_rgba(0,0,0,0.08)] border border-black/5 dark:bg-luminous-cyan/15 dark:text-luminous-cyan dark:border-luminous-cyan/30 dark:shadow-none'
+                    : 'text-slate-600 hover:text-slate-950 hover:bg-black/[0.03] dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/5'
                 )}
                 aria-current={active ? 'page' : undefined}
               >
@@ -84,7 +84,7 @@ export const Navbar: React.FC = () => {
           {/* Tablet/Mobile Search Quick Link */}
           <Link
             to="/search"
-            className="lg:hidden p-2 rounded-full text-slate-300 hover:text-white hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-luminous-cyan"
+            className="lg:hidden p-2 rounded-full text-slate-600 hover:text-slate-950 hover:bg-black/5 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-luminous-cyan"
             aria-label="Search movies"
           >
             <Search className="w-4 h-4" />
@@ -104,8 +104,8 @@ export const Navbar: React.FC = () => {
                   className={cn(
                     'p-2 rounded-full text-xs font-medium font-sans transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-luminous-cyan',
                     active
-                      ? 'bg-white/15 text-luminous-cyan shadow-sm border border-luminous-cyan/40'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      ? 'bg-white text-slate-950 border border-black/10 shadow-sm dark:bg-white/15 dark:text-luminous-cyan dark:border-luminous-cyan/40 dark:shadow-none'
+                      : 'text-slate-500 hover:text-slate-950 hover:bg-black/5 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5'
                   )}
                   aria-current={active ? 'page' : undefined}
                 >
@@ -114,20 +114,6 @@ export const Navbar: React.FC = () => {
               );
             })}
           </nav>
-
-          {/* Discreet Diagnostics Link */}
-          <div className="hidden xl:flex items-center pl-2 border-l border-white/10">
-            <Link
-              to="/diagnostics"
-              className={cn(
-                'flex items-center gap-1 text-[11px] font-sans transition-colors',
-                location.pathname === '/diagnostics' ? 'text-luminous-cyan font-semibold' : 'text-slate-500 hover:text-slate-300'
-              )}
-              title="System Diagnostics"
-            >
-              <Activity className="w-3.5 h-3.5" />
-            </Link>
-          </div>
         </div>
       </div>
     </header>

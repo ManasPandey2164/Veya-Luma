@@ -31,14 +31,17 @@ import {
   ErrorState,
 } from '../components/ui';
 
+import { useSetAtmosphere, useLibraryOptional } from '../context';
+
 export const DiscoverPage: React.FC = () => {
   const [pageState, setPageState] = usePageState('populated');
   const [searchPrompt, setSearchPrompt] = useState('');
   const [nlFeedback, setNlFeedback] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Local watchlist state initialized from fixture data for interactive feedback
-  const [watchlistMap, setWatchlistMap] = useState<Record<string, boolean>>(() =>
+  // Centralized shared library context with fallback for standalone test harnesses
+  const library = useLibraryOptional();
+  const [localWatchlistMap, setLocalWatchlistMap] = useState<Record<string, boolean>>(() =>
     MOVIE_FIXTURES.reduce(
       (acc, movie) => ({
         ...acc,
@@ -48,16 +51,30 @@ export const DiscoverPage: React.FC = () => {
     )
   );
 
+  const isMovieWatchlisted = (movieId: string): boolean => {
+    if (library) {
+      return library.isWatchlisted(movieId);
+    }
+    return localWatchlistMap[movieId] ?? false;
+  };
+
   const toggleWatchlist = (movieId: string) => {
-    setWatchlistMap((prev) => ({
-      ...prev,
-      [movieId]: !prev[movieId],
-    }));
+    if (library) {
+      library.toggleWatchlist(movieId);
+    } else {
+      setLocalWatchlistMap((prev) => ({
+        ...prev,
+        [movieId]: !prev[movieId],
+      }));
+    }
   };
 
   // Primary hero movie showcase (top fixture)
   const heroMovie: MovieFixture = MOVIE_FIXTURES[0];
-  const isHeroWatchlisted = watchlistMap[heroMovie.id] ?? false;
+  const isHeroWatchlisted = isMovieWatchlisted(heroMovie.id);
+
+  // Contextual cinematic atmosphere driven by the hero presentation's primary genre
+  useSetAtmosphere(heroMovie?.genres[0] || null);
 
   // Pre-curated fixture subsets for deliberate editorial shelves
   const featuredMovies = [
@@ -163,17 +180,38 @@ export const DiscoverPage: React.FC = () => {
 
       {pageState === 'populated' && (
         <div className="space-y-12 sm:space-y-16 pb-20">
-          {/* A. HERO SECTION */}
-          <section
-            aria-label="Featured Presentation"
-            className="relative w-full overflow-hidden rounded-2xl md:rounded-3xl border border-white/10 bg-obsidian-surface min-h-[480px] lg:min-h-[540px] flex items-end shadow-2xl"
-          >
+          {/* A. HERO SECTION WITH AMBIENT ATMOSPHERIC STAGE GLOW */}
+          <div className="relative">
+            {/* Contextual Genre Bloom radiating around and behind the hero */}
+            <div
+              className="absolute -inset-2 sm:-inset-6 rounded-3xl blur-2xl pointer-events-none opacity-40 transition-all duration-700 -z-0"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 50%, var(--vl-atmosphere-glow) 0%, transparent 70%)',
+              }}
+              aria-hidden="true"
+            />
+
+            <section
+              aria-label="Featured Presentation"
+              className="preserve-dark relative z-10 w-full overflow-hidden rounded-2xl md:rounded-3xl border border-white/10 bg-obsidian-surface min-h-[480px] lg:min-h-[540px] flex items-end shadow-2xl transition-all duration-700"
+              style={{
+                borderColor: 'var(--vl-atmosphere-glow)',
+                boxShadow: '0 20px 50px -15px var(--vl-atmosphere-glow)',
+              }}
+            >
             {/* Full-width Cinematic Backdrop Artwork */}
             <img
               src={heroMovie.backdrop}
               alt={`${heroMovie.title} cinematic backdrop`}
               className="absolute inset-0 w-full h-full object-cover object-center filter brightness-[0.80]"
               loading="eager"
+            />
+
+            {/* Ambient atmospheric color bleed */}
+            <div
+              className="absolute inset-0 pointer-events-none opacity-20 mix-blend-screen"
+              style={{ background: 'var(--vl-atmosphere-gradient)' }}
+              aria-hidden="true"
             />
 
             {/* Controlled Atmospheric Vignette Overlays (Artwork remains visually dominant) */}
@@ -184,7 +222,10 @@ export const DiscoverPage: React.FC = () => {
             {/* Hero Content Overlay */}
             <div className="relative z-10 p-6 sm:p-8 md:p-12 lg:p-14 max-w-3xl">
               {/* Eyebrow Spotlight Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold uppercase tracking-wider text-luminous-cyan mb-4">
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold uppercase tracking-wider text-luminous-cyan mb-4 transition-colors"
+                style={{ color: 'var(--vl-accent)', borderColor: 'var(--vl-accent)' }}
+              >
                 <CelestialPrism size={14} />
                 <span>Curated Spotlight • Featured Film</span>
               </div>
@@ -248,6 +289,7 @@ export const DiscoverPage: React.FC = () => {
               </div>
             </div>
           </section>
+        </div>
 
           {/* B. NATURAL-LANGUAGE DISCOVERY ENTRY */}
           <section
@@ -349,7 +391,7 @@ export const DiscoverPage: React.FC = () => {
                 <MovieCard
                   movie={movie}
                   to={`/movies/${movie.id}`}
-                  isWatchlisted={watchlistMap[movie.id]}
+                  isWatchlisted={isMovieWatchlisted(movie.id)}
                   onWatchlistToggle={toggleWatchlist}
                   onClick={(id) => navigate(`/movies/${id}`)}
                 />
@@ -370,25 +412,25 @@ export const DiscoverPage: React.FC = () => {
                   <span className="text-slate-300">
                     "Because you enjoy cerebral science fiction, philosophical depth, and contemplative pacing."
                   </span>
-                  <span className="text-slate-400 ml-1.5 opacity-80">(Curated fixture sample)</span>
+                  <span className="text-slate-400 ml-1.5 opacity-80">(Curated selection)</span>
                 </div>
               </div>
               <div className="text-[11px] text-luminous-cyan/80 shrink-0 font-medium self-end sm:self-center">
-                Sample Resonance Slate
+                Curated Resonance Slate
               </div>
             </div>
 
             <MovieShelf
               title="For Your Taste"
-              eyebrow="CURATORIAL TASTE SAMPLE"
-              description="Demonstration shelf reflecting an affinity for atmospheric worldbuilding and non-linear narrative puzzles."
+              eyebrow="CURATORIAL TASTE SELECTION"
+              description="Curated shelf reflecting an affinity for atmospheric worldbuilding and non-linear narrative puzzles."
             >
               {forYourTasteMovies.map((movie) => (
                 <div key={movie.id} className="min-w-[190px] w-52 shrink-0">
                   <MovieCard
                     movie={movie}
                     to={`/movies/${movie.id}`}
-                    isWatchlisted={watchlistMap[movie.id]}
+                    isWatchlisted={isMovieWatchlisted(movie.id)}
                     onWatchlistToggle={toggleWatchlist}
                     onClick={(id) => navigate(`/movies/${id}`)}
                     actionSlot={
@@ -415,7 +457,7 @@ export const DiscoverPage: React.FC = () => {
                 <MovieCard
                   movie={movie}
                   to={`/movies/${movie.id}`}
-                  isWatchlisted={watchlistMap[movie.id]}
+                  isWatchlisted={isMovieWatchlisted(movie.id)}
                   onWatchlistToggle={toggleWatchlist}
                   onClick={(id) => navigate(`/movies/${id}`)}
                 />
@@ -434,7 +476,7 @@ export const DiscoverPage: React.FC = () => {
                 <MovieCard
                   movie={movie}
                   to={`/movies/${movie.id}`}
-                  isWatchlisted={watchlistMap[movie.id]}
+                  isWatchlisted={isMovieWatchlisted(movie.id)}
                   onWatchlistToggle={toggleWatchlist}
                   onClick={(id) => navigate(`/movies/${id}`)}
                 />
@@ -503,7 +545,7 @@ export const DiscoverPage: React.FC = () => {
 
             {/* Development Stage Transparency Disclaimer */}
             <p className="text-center text-[11px] text-slate-400 font-sans tracking-wide">
-              Veya Luma Phase 1 Prototype • Recommendation slates, match metrics, and explanations are
+              Veya Luma Cinematic Discovery • Recommendation slates, match metrics, and curatorial notes are
               powered by centralized fixtures.
             </p>
           </section>

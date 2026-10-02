@@ -34,6 +34,7 @@ import {
   TasteNavigation,
 } from '../components/taste';
 import { resolveCinematicAtmosphere } from '../theme';
+import { usePreferences, useSetAtmosphere } from '../context';
 
 export type FlowStage = 'welcome' | 'movies' | 'genres' | 'moods' | 'themes' | 'preferences' | 'complete';
 
@@ -73,9 +74,15 @@ export const TasteDiscoveryPage: React.FC = () => {
 
   const seedMovies = getTasteDiscoverySeedMovies();
 
+  const { completeTasteDiscovery, accountPreferences } = usePreferences();
+
   // Contextual cinematic atmosphere resolved from current genre selection
   const primaryGenre = tasteState.selectedGenres[0] || null;
-  const atmosphere = resolveCinematicAtmosphere({ genre: primaryGenre });
+  useSetAtmosphere(primaryGenre);
+  const atmosphere = resolveCinematicAtmosphere({
+    genre: primaryGenre,
+    baseTheme: accountPreferences?.baseTheme,
+  });
 
   // Selection toggle helpers
   const toggleMovie = (movieId: string) => {
@@ -596,7 +603,10 @@ export const TasteDiscoveryPage: React.FC = () => {
                   size="lg"
                   variant="primary"
                   rightIcon={<ArrowRight className="w-4 h-4" />}
-                  onClick={() => navigate('/discover')}
+                  onClick={() => {
+                    completeTasteDiscovery?.(tasteState);
+                    navigate('/discover');
+                  }}
                   className="w-full sm:w-auto font-semibold px-8 shadow-cyan-glow"
                 >
                   Explore Veya Luma
