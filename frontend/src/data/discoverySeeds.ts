@@ -11,33 +11,39 @@ export interface DiscoverySeed {
 
 export const DISCOVERY_SEEDS: DiscoverySeed[] = [
   {
+    id: 'atmospheric-unsettling',
+    label: 'Find me something atmospheric and unsettling.',
+    query: 'Find me something atmospheric and unsettling.',
+    category: 'mood',
+  },
+  {
+    id: 'interstellar-intimate',
+    label: 'Something like Interstellar, but more intimate.',
+    query: 'Something like Interstellar, but more intimate.',
+    category: 'comparison',
+  },
+  {
+    id: 'clever-mystery',
+    label: 'Give me a clever mystery for tonight.',
+    query: 'Give me a clever mystery for tonight.',
+    category: 'thematic',
+  },
+  {
+    id: 'slow-burn-scifi',
+    label: 'Find a beautiful slow-burn sci-fi film.',
+    query: 'Find a beautiful slow-burn sci-fi film.',
+    category: 'genre',
+  },
+  {
     id: 'mind-bending-sci-fi',
     label: 'Mind-bending sci-fi',
     query: 'mind-bending sci-fi with philosophical depth',
     category: 'genre',
   },
   {
-    id: 'interstellar-less-bleak',
-    label: 'Like Interstellar, less bleak',
-    query: 'epic space exploration with hopeful tone',
-    category: 'comparison',
-  },
-  {
     id: 'atmospheric-neo-noir',
     label: 'Atmospheric neo-noir',
     query: 'rain-soaked city neo-noir with saxophone score',
-    category: 'mood',
-  },
-  {
-    id: 'cerebral-90s-thriller',
-    label: 'Cerebral 90s thriller',
-    query: 'complex psychological thriller from the 1990s',
-    category: 'thematic',
-  },
-  {
-    id: 'acoustic-solitude',
-    label: 'Acoustic solitude',
-    query: 'quiet contemplative character studies in wilderness',
     category: 'mood',
   },
 ];
