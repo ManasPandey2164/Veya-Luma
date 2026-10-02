@@ -12,31 +12,64 @@ export interface MovieExplanation {
   divergenceNote?: string;
 }
 
+/**
+ * ARCHITECTURAL CONTRACT SEPARATION (Phase 2 — Movie Data Foundation)
+ *
+ * A. CANONICAL MOVIE DATA:
+ *    Attributes belonging intrinsically to the movie catalog entity (derived from TMDB/canonical pipeline).
+ *
+ * B. PRESENTATION & RECOMMENDATION DATA:
+ *    Algorithmic affinity scores, dynamic natural language rationales, and user-specific first-party state.
+ *    These are NOT part of the permanent movie domain model.
+ */
 export interface MovieFixture {
+  // --- A. CANONICAL MOVIE DATA ---
+  /** Internal / slug identity (maps to canonical UUID in backend) */
   id: string;
+  /** Primary display title */
   title: string;
+  /** Release calendar year */
   year: number;
-  runtime: number; // in minutes
+  /** Duration in minutes */
+  runtime: number;
+  /** Poster artwork path or URL */
   poster: string;
+  /** Backdrop artwork path or URL */
   backdrop: string;
+  /** Narrative synopsis / overview */
   synopsis: string;
+  /** Canonical genres strictly conforming to Veya Luma taxonomy */
   genres: string[];
+  /** Canonical themes strictly conforming to Veya Luma taxonomy */
   themes: string[];
+  /** Canonical moods strictly conforming to Veya Luma taxonomy */
   moods: string[];
+  /** Primary language name or ISO code */
   language: string;
+  /** Principal director */
   director: string;
+  /** Principal billed cast */
   cast: string[];
+  /** Descriptive stylistic or subject tags */
   tags: string[];
+  /** Upstream source rating fact (e.g. TMDB vote average) */
   rating?: number;
-  matchScore?: number;
-  explanation?: MovieExplanation;
 
-  // UI state tracking flags for development simulation
+  // --- B. PRESENTATION / RECOMMENDATION DATA (Ephemeral & User-Scoped) ---
+  /** Algorithmic match affinity percentage [0-100] (calculated by recommender, not intrinsic to movie) */
+  matchScore?: number;
+  /** Dynamic natural language justification produced by explainability framework */
+  explanation?: MovieExplanation;
+  /** First-party user library state simulation */
   isWatchlisted?: boolean;
+  /** First-party user favourite state simulation */
   isFavorite?: boolean;
+  /** User watch timestamp */
   watchedDate?: string;
+  /** Graph / neighborhood related recommendations */
   relatedIds?: string[];
 }
+
 
 export const MOVIE_FIXTURES: MovieFixture[] = [
   {

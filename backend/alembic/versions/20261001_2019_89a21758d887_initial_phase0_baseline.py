@@ -1,15 +1,11 @@
 """initial_phase0_baseline
 
 Revision ID: 89a21758d887
-Revises: 
+Revises:
 Create Date: 2026-10-01 20:19:04.792818
 
 """
 from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = '89a21758d887'

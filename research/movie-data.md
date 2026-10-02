@@ -467,6 +467,96 @@ For a student MVP, **TMDB + careful Wikidata enrichment + optional Watchmode ava
 
 For a commercial app, do not rely on the public/free terms as a production license. Make the launch conditional on signed rights for catalog fields, images, ratings, availability, retention, attribution, derived features, and termination. Build the provider-agnostic Postgres model now so that TMDB, IMDb, JustWatch, Watchmode, Movie of the Night, BBFC, CSM, and future sources can be replaced or added without changing the user model.
 
+---
+
+## 12. Phase 2 Architecture: Movie Data Foundation Contract (Step 12 Baseline)
+
+The implementation foundation for Veya Luma's real movie data pipeline is established under `backend/app/domain/movie`, `backend/app/schemas/movie.py`, and `backend/app/providers`.
+
+### 12.1 Primary Source & Optional Enrichment Boundary
+- **Primary Source:** **TMDB** (`TMDBProvider`). Serves as the primary external catalog metadata source (titles, overview, release dates, runtime, original language, credits, artwork paths, and raw keywords).
+- **Optional Enrichment:** **Wikidata** (`WikidataProvider`). Selectively enriches canonical records with open structured data: Q-IDs (P31), cross-source IDs (IMDb P345, TMDB P4985), and multilingual labels. It is strictly optional and never a hard runtime blocker.
+
+### 12.2 Conceptual Pipeline
+```text
+TMDB API / Raw Payload
+      ↓
+TMDBProvider (Source Adapter)
+      ↓
+TMDBRawMovie (Source Model)
+      ↓
+MovieNormalizer (Taxonomy & Credits Normalization)
+      ↓
+IdentityResolver (Multi-Tier Deduplication & UUIDv5)
+      ↓
+assert_valid_canonical_movie (Data Quality & Invariant Validation)
+      ↓
+CanonicalMovie (Internal Domain Contract)
+      ↓
+[Future Phase: PostgreSQL Catalog Persistence]
+      ↓
+[Future Phase: FastAPI Recommendation & Catalog Endpoints]
+      ↓
+React Frontend (Consuming Canonical DTOs)
+```
+
+### 12.3 Source Model vs. Canonical Model Separation
+- **Source Model (`TMDBRawMovie` / `WikidataRawMovie`):** Mirrors external provider schemas with raw provider types, IDs, and nested vendor structures. The source model is strictly isolated within the provider adapter and normalization layer and is forbidden from leaking into application routes, recommenders, or the frontend.
+- **Canonical Model (`CanonicalMovie`):** The clean, provider-agnostic representation of a Veya Luma film. It contains internal synthetic UUIDs, normalized taxonomy (`genres`, `themes`, `moods`), structured credits, artwork references, provider identities, and immutable provenance metadata.
+
+### 12.4 Identity Strategy
+- **Internal Identity:** Every canonical movie is assigned an internal UUIDv4 or deterministic UUIDv5 (`generate_canonical_movie_id(source, external_id)` in DNS namespace `catalog.veyaluma.internal`). This guarantees idempotent re-processing without database coordination.
+- **Provider Identities (`ProviderIdentity`):** External IDs (`tmdb`, `imdb`, `wikidata`) are stored as explicit source-mapped objects with confidence scores (0.0 to 1.0) and primary provenance flags.
+
+### 12.5 Deterministic Duplicate Resolution
+The `IdentityResolver` executes four deterministic tiers:
+1. **Exact Provider Match:** Checks `(source_name, external_id)`. Yields `MATCH_EXACT` (confidence 1.0).
+2. **Cross-Source Match:** Checks verified secondary IDs (e.g. TMDB `imdb_id` matches known record's IMDb identity). Yields `MATCH_CROSS_SOURCE` (confidence 0.98).
+3. **Corroborated Natural Match:** Aligns normalized title (stripped of diacritics, punctuation, and leading articles) with release year (±1 year) and director name or runtime (±5m). Yields `MATCH_CORROBORATED` (confidence 0.90–0.92).
+4. **Collision & Conflict Quarantine:** Same title and year with divergent directors/runtimes (e.g. remakes) are flagged as `AMBIGUOUS_CONFLICT` for human editorial review, never silently merged.
+5. **New Record Creation:** If no match exists, a deterministic canonical UUID is generated.
+
+### 12.6 Taxonomy Normalization
+- All genres are normalized via `normalize_genre()` into the controlled vocabulary `CANONICAL_GENRES` (e.g. TMDB 878 / "Science Fiction" → "Sci-Fi", "film noir" → "Neo-Noir").
+- Themes and moods are **Veya Luma-derived enrichment**. Keywords from TMDB are ingested as evidence and mapped via `map_keywords_to_taxonomy()` into canonical candidate themes (`CANONICAL_THEMES`) and moods (`CANONICAL_MOODS`).
+
+### 12.7 Provenance & Field-Level Derivation Tracking
+Every `CanonicalMovie` carries a `ProvenanceRecord`:
+- Primary upstream source, external ID, and endpoint (`movie-details`).
+- UTC retrieval timestamp and applicable license profile (`tmdb-noncommercial-prototype`).
+- SHA-256 digest of original raw payload (`compute_payload_sha256`).
+- Field-level mapping (`field_sources`) explicitly categorizing attributes as:
+  - `source_derived`: title, release_date, runtime, language, credits, artwork paths, raw genres.
+  - `veya_derived`: themes, moods, styles (Veya personalization features).
+  - `cross_enriched`: secondary provider identifiers.
+
+### 12.8 Data Quality & Invariant Validation
+`validate_canonical_movie()` and `assert_valid_canonical_movie()` enforce:
+- Non-empty, stripped titles within reasonable bounds (1–500 chars).
+- Strict temporal bounds (1880–2100) and year consistency between `release_date` and `release_year`.
+- Positive runtime minutes (> 0 and < 1440m).
+- 100% adherence to controlled taxonomy sets (`CANONICAL_GENRES`, `CANONICAL_THEMES`, `CANONICAL_MOODS`).
+- **Zero placeholder fabrication:** Strings like `"N/A"`, `"Unknown"`, `"TBD"` are strictly prohibited; missing upstream data must remain `None`.
+
+### 12.9 Artwork References
+- Stored as provider-relative paths (`poster_path`, `backdrop_path`) or validated URLs (`poster_url`, `backdrop_url`).
+- Artwork is never downloaded, altered, or re-hosted, adhering strictly to TMDB and copyright constraints.
+
+### 12.10 Development Fixtures Migration Path
+- The 8 development fixtures in `frontend/src/fixtures/movieFixtures.ts` are preserved intact to guarantee zero frontend regressions.
+- The `MovieFixture` contract explicitly separates **A. CANONICAL MOVIE DATA** from **B. PRESENTATION / RECOMMENDATION DATA** (`matchScore`, `explanation`, `isWatchlisted`, `isFavorite`, `relatedIds`).
+- When the live catalog API is deployed in Phase 2, backend endpoints will return `CanonicalMovie` entities; presentation metadata will be computed and attached dynamically by the recommender pipeline.
+
+### 12.11 What is Deferred to Later Steps
+The following are explicitly deferred:
+- Full catalog crawlers and bulk importers.
+- Celery / Redis background worker infrastructure.
+- PostgreSQL ORM tables and Alembic migrations for catalog entities.
+- Movie CRUD endpoints.
+- User persistence, authentication, and watchlist tables.
+- Machine learning models, embeddings, vector databases, and LLM tagging.
+
+
 ## References
 
 [1] TMDB, “Getting Started,” https://developer.themoviedb.org/docs/getting-started  

@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # TMDB Provider Configuration (Primary movie metadata source)
+    TMDB_API_KEY: Union[str, None] = None
+    TMDB_READ_ACCESS_TOKEN: Union[str, None] = None
+    TMDB_BASE_URL: str = "https://api.themoviedb.org/3"
+    TMDB_IMAGE_BASE_URL: str = "https://image.tmdb.org/t/p"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
