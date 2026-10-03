@@ -4,3 +4,6 @@ export * from './PreferencesContext';
 export * from './usePreferences';
 export * from './AtmosphereContext';
 export * from './useAtmosphere';
+export * from './AuthContext';
+export * from './useAuth';
+export * from './authTypes';

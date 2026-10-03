@@ -32,7 +32,9 @@ class MovieNormalizer:
     """Normalizes raw upstream movie payloads into canonical Veya Luma records."""
 
     @staticmethod
-    def parse_release_date(raw_date_str: Optional[str]) -> tuple[Optional[date], Optional[int]]:
+    def parse_release_date(
+        raw_date_str: Optional[str],
+    ) -> tuple[Optional[date], Optional[int]]:
         """Parses an ISO date string ('YYYY-MM-DD') into a date object and year integer."""
         if not raw_date_str or not raw_date_str.strip():
             return None, None
@@ -55,6 +57,8 @@ class MovieNormalizer:
         canonical_id: Optional[UUID] = None,
         curated_themes: Optional[list[str]] = None,
         curated_moods: Optional[list[str]] = None,
+        curated_styles: Optional[list[str]] = None,
+        curated_tags: Optional[list[str]] = None,
         retrieved_at: Optional[datetime] = None,
     ) -> CanonicalMovie:
         """Transforms a TMDBRawMovie model into a validated CanonicalMovie."""
@@ -76,19 +80,34 @@ class MovieNormalizer:
 
         canonical_genres = normalize_genres(raw_genre_inputs)
 
-        # Extract keywords for thematic enrichment
+        # Extract keywords for thematic enrichment and metadata tag preservation
         candidate_themes: list[str] = list(curated_themes or [])
         candidate_moods: list[str] = list(curated_moods or [])
+        candidate_styles: list[str] = list(curated_styles or [])
+        candidate_tags: list[str] = list(curated_tags or [])
 
         if raw.keywords and raw.keywords.keywords:
-            kw_names = [kw.name for kw in raw.keywords.keywords]
-            mapped_themes, mapped_moods = map_keywords_to_taxonomy(kw_names)
+            kw_names = [
+                kw.name.strip()
+                for kw in raw.keywords.keywords
+                if kw.name and kw.name.strip()
+            ]
+            for name in kw_names:
+                if name.lower() not in [t.lower() for t in candidate_tags]:
+                    candidate_tags.append(name)
+
+            mapped_themes, mapped_moods, mapped_styles = map_keywords_to_taxonomy(
+                kw_names
+            )
             for t in mapped_themes:
                 if t not in candidate_themes:
                     candidate_themes.append(t)
             for m in mapped_moods:
                 if m not in candidate_moods:
                     candidate_moods.append(m)
+            for s in mapped_styles:
+                if s not in candidate_styles:
+                    candidate_styles.append(s)
 
         # 5. Normalize Credits
         directors: list[CrewMember] = []
@@ -111,7 +130,7 @@ class MovieNormalizer:
                         lead_director_name = c.name.strip()
 
             sorted_cast = sorted(
-                raw.credits.cast, key=lambda x: (x.order if x.order is not None else 999)
+                raw.credits.cast, key=lambda x: x.order if x.order is not None else 999
             )
             for cm in sorted_cast:
                 cast_members.append(
@@ -149,11 +168,11 @@ class MovieNormalizer:
         spoken_langs: list[str] = []
         for sl in raw.spoken_languages:
             code = sl.get("iso_639_1")
-            name = sl.get("english_name") or sl.get("name")
+            raw_name: Any = sl.get("english_name") or sl.get("name")
             if code:
-                spoken_langs.append(code.lower())
-            elif name:
-                spoken_langs.append(name)
+                spoken_langs.append(str(code).lower())
+            elif raw_name:
+                spoken_langs.append(str(raw_name))
 
         # 9. Provider Identities
         identities: list[ProviderIdentity] = [
@@ -198,11 +217,16 @@ class MovieNormalizer:
             genres=canonical_genres,
             themes=candidate_themes,
             moods=candidate_moods,
+            styles=candidate_styles,
             credits=movie_credits,
             artwork=artwork,
             collection=collection,
             provider_identities=identities,
             provenance=provenance,
+            tags=candidate_tags,
+            popularity=raw.popularity,
+            vote_average=raw.vote_average,
+            vote_count=raw.vote_count,
         )
 
         # Validate domain invariants
@@ -250,8 +274,6 @@ class MovieNormalizer:
                 )
 
         # Return refreshed canonical movie
-        enriched = movie.model_copy(
-            update={"provider_identities": updated_identities}
-        )
+        enriched = movie.model_copy(update={"provider_identities": updated_identities})
         assert_valid_canonical_movie(enriched)
         return enriched

@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell } from './components/ui/AppShell';
-import { LibraryProvider, PreferencesProvider, AtmosphereProvider } from './context';
+import { LibraryProvider, PreferencesProvider, AtmosphereProvider, AuthProvider } from './context';
 
 import { DiscoverPage } from './pages/DiscoverPage';
 import { SearchPage } from './pages/SearchPage';
@@ -29,48 +29,50 @@ const queryClient = new QueryClient({
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <PreferencesProvider>
-        <AtmosphereProvider>
-          <LibraryProvider>
-            <Router>
-              <AppShell>
-                <Routes>
-                  {/* Primary Destinations */}
-                  <Route path="/" element={<DiscoverPage />} />
-                  <Route path="/discover" element={<DiscoverPage />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/taste-discovery" element={<TasteDiscoveryPage />} />
-                  <Route path="/recommendations" element={<RecommendationsPage />} />
+      <AuthProvider>
+        <PreferencesProvider>
+          <AtmosphereProvider>
+            <LibraryProvider>
+              <Router>
+                <AppShell>
+                  <Routes>
+                    {/* Primary Destinations */}
+                    <Route path="/" element={<DiscoverPage />} />
+                    <Route path="/discover" element={<DiscoverPage />} />
+                    <Route path="/search" element={<SearchPage />} />
+                    <Route path="/taste-discovery" element={<TasteDiscoveryPage />} />
+                    <Route path="/recommendations" element={<RecommendationsPage />} />
 
-                  {/* Movie Detail Dossier */}
-                  <Route path="/movies/:movieId" element={<MovieDetailPage />} />
+                    {/* Movie Detail Dossier */}
+                    <Route path="/movies/:movieId" element={<MovieDetailPage />} />
 
-                  {/* Library Routes */}
-                  <Route path="/library" element={<LibraryPage />} />
-                  <Route path="/library/watchlist" element={<LibraryPage />} />
-                  <Route path="/library/favourites" element={<LibraryPage />} />
-                  <Route path="/library/history" element={<LibraryPage />} />
+                    {/* Library Routes */}
+                    <Route path="/library" element={<LibraryPage />} />
+                    <Route path="/library/watchlist" element={<LibraryPage />} />
+                    <Route path="/library/favourites" element={<LibraryPage />} />
+                    <Route path="/library/history" element={<LibraryPage />} />
 
-                  {/* Preferences Routes */}
-                  <Route path="/preferences" element={<Navigate to="/preferences/taste" replace />} />
-                  <Route path="/preferences/taste" element={<PreferencesPage tab="taste" />} />
-                  <Route path="/preferences/recommendations" element={<PreferencesPage tab="recommendations" />} />
+                    {/* Preferences Routes */}
+                    <Route path="/preferences" element={<Navigate to="/preferences/taste" replace />} />
+                    <Route path="/preferences/taste" element={<PreferencesPage tab="taste" />} />
+                    <Route path="/preferences/recommendations" element={<PreferencesPage tab="recommendations" />} />
 
-                  {/* User Profile & Account */}
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/account" element={<AccountPage />} />
+                    {/* User Profile & Account */}
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/account" element={<AccountPage />} />
 
-                  {/* Developer Diagnostics Probes */}
-                  <Route path="/diagnostics" element={<DiagnosticsPage />} />
+                    {/* Developer Diagnostics Probes */}
+                    <Route path="/diagnostics" element={<DiagnosticsPage />} />
 
-                  {/* 404 Fallback */}
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </AppShell>
-            </Router>
-          </LibraryProvider>
-        </AtmosphereProvider>
-      </PreferencesProvider>
+                    {/* 404 Fallback */}
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </AppShell>
+              </Router>
+            </LibraryProvider>
+          </AtmosphereProvider>
+        </PreferencesProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

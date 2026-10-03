@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 import { Sparkles, Compass, Film, Clapperboard, Hash } from 'lucide-react';
 import {
   MOVIE_FIXTURES,
+  type MovieFixture,
   searchMovies,
   getCuratedFeaturedFixtures,
   SUGGESTED_SEARCHES,
 } from '../fixtures/movieFixtures';
+import { searchMoviesApi, mapMovieListItemToFixture } from '../services/api';
 import {
   PageContainer,
   SearchInput,
@@ -88,9 +90,38 @@ export const SearchPage: React.FC = () => {
     setQuery(urlQuery);
   }, [urlQuery]);
 
-  // Execute client-side normalized search across movie fixtures
+  // Execute client-side normalized search across movie fixtures as baseline
   const hasActiveQuery = query.trim().length > 0;
-  const searchResults = hasActiveQuery ? searchMovies(query) : [];
+  const fixtureSearchResults = hasActiveQuery ? searchMovies(query) : [];
+  const [liveSearchResults, setLiveSearchResults] = useState<MovieFixture[] | null>(null);
+
+  useEffect(() => {
+    if (!hasActiveQuery) {
+      setLiveSearchResults(null);
+      return;
+    }
+    let isMounted = true;
+    searchMoviesApi(query.trim())
+      .then((res) => {
+        if (isMounted) {
+          if (res.items && res.items.length > 0) {
+            setLiveSearchResults(res.items.map(mapMovieListItemToFixture));
+          } else {
+            setLiveSearchResults([]);
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setLiveSearchResults(null);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [query, hasActiveQuery]);
+
+  const searchResults = liveSearchResults !== null ? liveSearchResults : fixtureSearchResults;
   const curatedMovies = getCuratedFeaturedFixtures();
 
   const handleQueryChange = (val: string) => {

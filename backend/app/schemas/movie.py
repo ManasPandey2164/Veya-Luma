@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.domain.movie.taxonomy import (
     CANONICAL_GENRES,
     CANONICAL_MOODS,
+    CANONICAL_STYLES,
     CANONICAL_THEMES,
 )
 
@@ -21,8 +22,10 @@ from app.domain.movie.taxonomy import (
 # 1. PROVENANCE & IDENTITY CONTRACTS
 # ==============================================================================
 
+
 class FieldSourceType(str, Enum):
     """Categorization of field derivation origin."""
+
     SOURCE_DERIVED = "source_derived"
     VEYA_DERIVED = "veya_derived"
     CROSS_ENRICHED = "cross_enriched"
@@ -31,24 +34,45 @@ class FieldSourceType(str, Enum):
 
 class ProviderIdentity(BaseModel):
     """Mapping from canonical internal movie to an external provider's identity."""
+
     model_config = ConfigDict(frozen=True)
 
-    source: str = Field(description="Name of external provider (e.g. 'tmdb', 'imdb', 'wikidata', 'editorial_fixture')")
-    external_id: str = Field(description="Identifier within external provider's namespace")
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Match confidence score")
-    is_primary: bool = Field(default=False, description="Whether this source is the primary origin of the record")
+    source: str = Field(
+        description="Name of external provider (e.g. 'tmdb', 'imdb', 'wikidata', 'editorial_fixture')"
+    )
+    external_id: str = Field(
+        description="Identifier within external provider's namespace"
+    )
+    confidence: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Match confidence score"
+    )
+    is_primary: bool = Field(
+        default=False,
+        description="Whether this source is the primary origin of the record",
+    )
 
 
 class ProvenanceRecord(BaseModel):
     """Audit metadata tracking the origin, retrieval time, license, and derivation of movie data."""
+
     model_config = ConfigDict(frozen=True)
 
     source: str = Field(description="Primary upstream provider name")
-    source_id: Optional[str] = Field(default=None, description="External provider identifier")
-    endpoint_or_product: str = Field(default="movie-details", description="Upstream endpoint or dataset queried")
-    retrieved_at: datetime = Field(description="UTC timestamp of ingestion / extraction")
-    license_profile: str = Field(description="Applicable license profile (e.g. 'tmdb-noncommercial-prototype')")
-    raw_sha256: Optional[str] = Field(default=None, description="SHA-256 digest of original raw provider payload")
+    source_id: Optional[str] = Field(
+        default=None, description="External provider identifier"
+    )
+    endpoint_or_product: str = Field(
+        default="movie-details", description="Upstream endpoint or dataset queried"
+    )
+    retrieved_at: datetime = Field(
+        description="UTC timestamp of ingestion / extraction"
+    )
+    license_profile: str = Field(
+        description="Applicable license profile (e.g. 'tmdb-noncommercial-prototype')"
+    )
+    raw_sha256: Optional[str] = Field(
+        default=None, description="SHA-256 digest of original raw provider payload"
+    )
     field_sources: dict[str, str] = Field(
         default_factory=dict,
         description="Field-level mapping indicating source_derived vs veya_derived origin",
@@ -59,8 +83,10 @@ class ProvenanceRecord(BaseModel):
 # 2. CREDITS & ARTWORK
 # ==============================================================================
 
+
 class CastMember(BaseModel):
     """Normalized cast member credit."""
+
     model_config = ConfigDict(frozen=True)
 
     name: str = Field(min_length=1, max_length=255)
@@ -71,6 +97,7 @@ class CastMember(BaseModel):
 
 class CrewMember(BaseModel):
     """Normalized crew member credit."""
+
     model_config = ConfigDict(frozen=True)
 
     name: str = Field(min_length=1, max_length=255)
@@ -81,6 +108,7 @@ class CrewMember(BaseModel):
 
 class MovieCredits(BaseModel):
     """Structured credits container for a movie."""
+
     director: Optional[str] = None
     directors: list[CrewMember] = Field(default_factory=list)
     cast: list[CastMember] = Field(default_factory=list)
@@ -89,6 +117,7 @@ class MovieCredits(BaseModel):
 
 class ArtworkReference(BaseModel):
     """References to movie visual artwork without rehosting or copyright presumption."""
+
     poster_path: Optional[str] = None
     backdrop_path: Optional[str] = None
     poster_url: Optional[str] = None
@@ -97,6 +126,7 @@ class ArtworkReference(BaseModel):
 
 class CollectionReference(BaseModel):
     """Franchise / collection metadata."""
+
     collection_id: Optional[str] = None
     name: Optional[str] = None
     poster_path: Optional[str] = None
@@ -106,32 +136,65 @@ class CollectionReference(BaseModel):
 # 3. CANONICAL MOVIE DOMAIN MODEL
 # ==============================================================================
 
+
 class CanonicalMovie(BaseModel):
     """The canonical Veya Luma movie representation.
 
     All internal domain services, discovery feeds, and recommendation algorithms
     depend exclusively on this canonical contract, never on raw vendor responses.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     # Primary Internal Identity
-    id: UUID = Field(description="Unique internal Veya Luma movie identifier (UUIDv4/UUIDv5)")
+    id: UUID = Field(
+        description="Unique internal Veya Luma movie identifier (UUIDv4/UUIDv5)"
+    )
 
     # Core Metadata
-    title: str = Field(min_length=1, max_length=500, description="Canonical title in primary display language")
-    original_title: Optional[str] = Field(default=None, max_length=500, description="Title in original release language")
-    original_language: str = Field(default="en", min_length=2, max_length=10, description="ISO 639-1 code")
-    spoken_languages: list[str] = Field(default_factory=list, description="List of spoken language codes or names")
-    release_date: Optional[date] = Field(default=None, description="Canonical primary release date")
-    release_year: Optional[int] = Field(default=None, ge=1880, le=2100, description="Release calendar year")
-    runtime_minutes: Optional[int] = Field(default=None, gt=0, lt=1440, description="Duration in minutes (positive integer)")
-    synopsis: Optional[str] = Field(default=None, max_length=10000, description="Narrative overview/synopsis")
+    title: str = Field(
+        min_length=1,
+        max_length=500,
+        description="Canonical title in primary display language",
+    )
+    original_title: Optional[str] = Field(
+        default=None, max_length=500, description="Title in original release language"
+    )
+    original_language: str = Field(
+        default="en", min_length=2, max_length=10, description="ISO 639-1 code"
+    )
+    spoken_languages: list[str] = Field(
+        default_factory=list, description="List of spoken language codes or names"
+    )
+    release_date: Optional[date] = Field(
+        default=None, description="Canonical primary release date"
+    )
+    release_year: Optional[int] = Field(
+        default=None, ge=1880, le=2100, description="Release calendar year"
+    )
+    runtime_minutes: Optional[int] = Field(
+        default=None,
+        gt=0,
+        lt=1440,
+        description="Duration in minutes (positive integer)",
+    )
+    synopsis: Optional[str] = Field(
+        default=None, max_length=10000, description="Narrative overview/synopsis"
+    )
 
     # Controlled Multi-Axis Taxonomy
-    genres: list[str] = Field(default_factory=list, description="Canonical genre categories")
-    themes: list[str] = Field(default_factory=list, description="Canonical theme classifications")
-    moods: list[str] = Field(default_factory=list, description="Canonical mood classifications")
-    styles: list[str] = Field(default_factory=list, description="Canonical stylistic descriptors")
+    genres: list[str] = Field(
+        default_factory=list, description="Canonical genre categories"
+    )
+    themes: list[str] = Field(
+        default_factory=list, description="Canonical theme classifications"
+    )
+    moods: list[str] = Field(
+        default_factory=list, description="Canonical mood classifications"
+    )
+    styles: list[str] = Field(
+        default_factory=list, description="Canonical stylistic descriptors"
+    )
 
     # Associated Entities
     credits: MovieCredits = Field(default_factory=MovieCredits)
@@ -147,7 +210,28 @@ class CanonicalMovie(BaseModel):
         default=None,
         description="Audit provenance record for this movie record",
     )
-    tags: list[str] = Field(default_factory=list, description="Non-taxonomy descriptive tags where justified")
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Non-taxonomy descriptive tags where justified",
+    )
+
+    # Quantitative popularity and quality metrics (TMDB-persisted)
+    popularity: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        description="Quantitative popularity metric supporting TMDB decimal values",
+    )
+    vote_average: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Quantitative vote average rating (0.0 to 10.0)",
+    )
+    vote_count: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Quantitative vote count integer",
+    )
 
     @field_validator("title")
     @classmethod
@@ -206,6 +290,16 @@ class CanonicalMovie(BaseModel):
                 )
         return v
 
+    @field_validator("styles")
+    @classmethod
+    def validate_styles(cls, v: list[str]) -> list[str]:
+        for style in v:
+            if style not in CANONICAL_STYLES:
+                raise ValueError(
+                    f"Invalid canonical style: '{style}'. Must belong to CANONICAL_STYLES."
+                )
+        return v
+
     @model_validator(mode="after")
     def validate_release_year_consistency(self) -> "CanonicalMovie":
         if self.release_date is not None:
@@ -222,6 +316,7 @@ class CanonicalMovie(BaseModel):
 # ==============================================================================
 # 4. EXTERNAL SOURCE MODELS (TMDB & WIKIDATA)
 # ==============================================================================
+
 
 class TMDBGenre(BaseModel):
     id: int
@@ -265,6 +360,7 @@ class TMDBKeywords(BaseModel):
 
 class TMDBRawMovie(BaseModel):
     """Raw external model representing a response from the TMDB /movie/{id} endpoint."""
+
     model_config = ConfigDict(extra="ignore")
 
     id: int
@@ -290,6 +386,7 @@ class TMDBRawMovie(BaseModel):
 
 class WikidataRawMovie(BaseModel):
     """Raw external model representing an entity response from Wikidata SPARQL or entity lookup."""
+
     model_config = ConfigDict(extra="ignore")
 
     qid: str = Field(description="Wikidata Entity Q-ID, e.g. 'Q183672'")
@@ -309,6 +406,7 @@ class WikidataRawMovie(BaseModel):
 # 5. IDENTITY RESOLUTION & DUPLICATE MODELS
 # ==============================================================================
 
+
 class ResolutionAction(str, Enum):
     MATCH_EXACT = "match_exact"
     MATCH_CROSS_SOURCE = "match_cross_source"
@@ -319,6 +417,7 @@ class ResolutionAction(str, Enum):
 
 class IdentityResolutionResult(BaseModel):
     """Result of evaluating an incoming source record against the existing catalog identity graph."""
+
     action: ResolutionAction
     resolved_id: UUID
     confidence: float = Field(ge=0.0, le=1.0)

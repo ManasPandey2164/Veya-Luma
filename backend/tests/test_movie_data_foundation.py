@@ -56,6 +56,7 @@ from app.schemas.movie import (
 # 1. VALID CANONICAL MOVIE
 # ==============================================================================
 
+
 def test_valid_canonical_movie() -> None:
     """Verifies that a fully populated valid CanonicalMovie passes all invariants."""
     movie = CanonicalMovie(
@@ -69,16 +70,24 @@ def test_valid_canonical_movie() -> None:
         runtime_minutes=164,
         synopsis="A young blade runner's discovery of a long-buried secret leads him to track down former blade runner Rick Deckard.",
         genres=["Sci-Fi", "Neo-Noir", "Mystery"],
-        themes=["Artificial Intelligence & Identity", "Memory & Determinism", "Existentialism & Isolation"],
+        themes=[
+            "Artificial Intelligence & Identity",
+            "Memory & Determinism",
+            "Existentialism & Isolation",
+        ],
         moods=["Atmospheric", "Nocturnal", "Melancholic", "Contemplative"],
         credits=MovieCredits(
             director="Denis Villeneuve",
             cast=[
                 CastMember(name="Ryan Gosling", character="K", billing_order=0),
-                CastMember(name="Harrison Ford", character="Rick Deckard", billing_order=1),
+                CastMember(
+                    name="Harrison Ford", character="Rick Deckard", billing_order=1
+                ),
             ],
             crew=[
-                CrewMember(name="Denis Villeneuve", department="Directing", job="Director"),
+                CrewMember(
+                    name="Denis Villeneuve", department="Directing", job="Director"
+                ),
             ],
         ),
         artwork=ArtworkReference(
@@ -86,7 +95,9 @@ def test_valid_canonical_movie() -> None:
             backdrop_path="/backdrop_br2049.jpg",
         ),
         provider_identities=[
-            ProviderIdentity(source="tmdb", external_id="335984", confidence=1.0, is_primary=True),
+            ProviderIdentity(
+                source="tmdb", external_id="335984", confidence=1.0, is_primary=True
+            ),
             ProviderIdentity(source="imdb", external_id="tt1856101", confidence=1.0),
         ],
     )
@@ -102,6 +113,7 @@ def test_valid_canonical_movie() -> None:
 # ==============================================================================
 # 2. INVALID CANONICAL MOVIE
 # ==============================================================================
+
 
 def test_invalid_canonical_movie() -> None:
     """Verifies that malformed movies are rejected by domain validation."""
@@ -147,6 +159,7 @@ def test_invalid_canonical_movie() -> None:
 # 3. REQUIRED FIELDS
 # ==============================================================================
 
+
 def test_required_fields() -> None:
     """Ensures required fields (id, title) cannot be omitted."""
     with pytest.raises(ValidationError) as exc:
@@ -159,6 +172,7 @@ def test_required_fields() -> None:
 # ==============================================================================
 # 4. OPTIONAL FIELDS
 # ==============================================================================
+
 
 def test_optional_fields() -> None:
     """Ensures optional fields cleanly default to None or empty containers."""
@@ -184,6 +198,7 @@ def test_optional_fields() -> None:
 # ==============================================================================
 # 5. PROVIDER IDENTITY
 # ==============================================================================
+
 
 def test_provider_identity() -> None:
     """Tests provider identity representation, bounds, and external sourcing invariants."""
@@ -219,6 +234,7 @@ def test_provider_identity() -> None:
 # 6. INTERNAL IDENTITY (DETERMINISM)
 # ==============================================================================
 
+
 def test_internal_identity_determinism() -> None:
     """Verifies that internal UUIDv5 generation is deterministic and reproducible."""
     uuid1 = generate_canonical_movie_id("tmdb", "335984")
@@ -235,6 +251,7 @@ def test_internal_identity_determinism() -> None:
 # ==============================================================================
 # 7. PROVENANCE TRACKING
 # ==============================================================================
+
 
 def test_provenance_tracking() -> None:
     """Tests provenance creation, SHA-256 payload hashing, and field derivation tagging."""
@@ -264,6 +281,7 @@ def test_provenance_tracking() -> None:
 # 8. CANONICAL GENRES VALIDATION
 # ==============================================================================
 
+
 def test_canonical_genres_validation() -> None:
     """Tests that genres must strictly conform to CANONICAL_GENRES."""
     # Valid canonical genres
@@ -288,6 +306,7 @@ def test_canonical_genres_validation() -> None:
 # 9. CANONICAL THEMES VALIDATION
 # ==============================================================================
 
+
 def test_canonical_themes_validation() -> None:
     """Tests that themes must strictly conform to CANONICAL_THEMES."""
     movie = CanonicalMovie(
@@ -310,6 +329,7 @@ def test_canonical_themes_validation() -> None:
 # ==============================================================================
 # 10. CANONICAL MOODS VALIDATION
 # ==============================================================================
+
 
 def test_canonical_moods_validation() -> None:
     """Tests that moods must strictly conform to CANONICAL_MOODS."""
@@ -334,6 +354,7 @@ def test_canonical_moods_validation() -> None:
 # 11. TAXONOMY NORMALIZATION
 # ==============================================================================
 
+
 def test_taxonomy_normalization() -> None:
     """Tests normalization of TMDB numeric IDs and alias strings to canonical genres."""
     # TMDB IDs
@@ -350,20 +371,30 @@ def test_taxonomy_normalization() -> None:
     assert normalize_genre("black comedy") == "Comedy"
 
     # Batch normalization & deduplication
-    raw_list = ["Science Fiction", 878, "Thriller", "film noir", "UnknownProviderGenre"]
+    raw_list: list[str | int] = [
+        "Science Fiction",
+        878,
+        "Thriller",
+        "film noir",
+        "UnknownProviderGenre",
+    ]
     normalized = normalize_genres(raw_list)
     assert normalized == ["Sci-Fi", "Thriller", "Neo-Noir"]
 
-    # Keyword mapping to themes and moods
-    themes, moods = map_keywords_to_taxonomy(["artificial intelligence", "memory", "slow burn"])
+    # Keyword mapping to themes, moods, and styles
+    themes, moods, styles = map_keywords_to_taxonomy(
+        ["artificial intelligence", "memory", "slow burn"]
+    )
     assert "Artificial Intelligence & Identity" in themes
     assert "Memory & Determinism" in themes
     assert "Meditative" in moods or "Contemplative" in moods
+    assert "Slow burn" in styles
 
 
 # ==============================================================================
 # 12. DUPLICATE IDENTITY HANDLING
 # ==============================================================================
+
 
 def test_duplicate_identity_handling() -> None:
     """Tests multi-tier identity resolution: exact, cross-source, corroborated, conflict, and create_new."""
@@ -443,6 +474,7 @@ def test_duplicate_identity_handling() -> None:
 # 13. MISSING METADATA PRESERVATION
 # ==============================================================================
 
+
 def test_missing_metadata_preservation() -> None:
     """Verifies that missing upstream metadata remains None and placeholder fabrication is blocked."""
     # When synopsis is missing or empty, it should be None
@@ -466,7 +498,9 @@ def test_missing_metadata_preservation() -> None:
         id=uuid4(),
         title="Valid Title",
         credits=MovieCredits(director="Unknown Director"),
-        provider_identities=[ProviderIdentity(source="editorial_fixture", external_id="f1")],
+        provider_identities=[
+            ProviderIdentity(source="editorial_fixture", external_id="f1")
+        ],
     )
     errors = validate_canonical_movie(invalid_movie)
     assert any("Director name contains forbidden placeholder" in e for e in errors)
@@ -475,6 +509,7 @@ def test_missing_metadata_preservation() -> None:
 # ==============================================================================
 # 14. SOURCE -> CANONICAL TRANSFORMATION & WIKIDATA ENRICHMENT
 # ==============================================================================
+
 
 def test_source_to_canonical_transformation() -> None:
     """Tests end-to-end transformation from raw TMDB payload and Wikidata enrichment."""
@@ -497,11 +532,26 @@ def test_source_to_canonical_transformation() -> None:
         "credits": {
             "cast": [
                 {"id": 30614, "name": "Ryan Gosling", "character": "K", "order": 0},
-                {"id": 1229, "name": "Harrison Ford", "character": "Rick Deckard", "order": 1},
+                {
+                    "id": 1229,
+                    "name": "Harrison Ford",
+                    "character": "Rick Deckard",
+                    "order": 1,
+                },
             ],
             "crew": [
-                {"id": 137427, "name": "Denis Villeneuve", "department": "Directing", "job": "Director"},
-                {"id": 9214, "name": "Roger Deakins", "department": "Camera", "job": "Director of Photography"},
+                {
+                    "id": 137427,
+                    "name": "Denis Villeneuve",
+                    "department": "Directing",
+                    "job": "Director",
+                },
+                {
+                    "id": 9214,
+                    "name": "Roger Deakins",
+                    "department": "Camera",
+                    "job": "Director of Photography",
+                },
             ],
         },
         "keywords": {
@@ -558,6 +608,8 @@ def test_source_to_canonical_transformation() -> None:
         "imdb_id": "tt1856101",
     }
     enriched = WikidataProvider.enrich(canonical, wikidata_payload)
-    wikidata_ident = next(i for i in enriched.provider_identities if i.source == "wikidata")
+    wikidata_ident = next(
+        i for i in enriched.provider_identities if i.source == "wikidata"
+    )
     assert wikidata_ident.external_id == "Q21500755"
     assert len(enriched.provider_identities) == 3

@@ -6,16 +6,22 @@ import {
   Sun,
   Moon,
   Check,
+  User,
+  LogIn,
+  LogOut,
+  KeyRound,
 } from 'lucide-react';
 
-import { usePreferences, useLibrary, useSetAtmosphere } from '../context';
+import { usePreferences, useLibrary, useSetAtmosphere, useAuth } from '../context';
 import { PersonalNav } from '../components/personal';
 import { cn } from '../utils/cn';
+import { AuthModal } from '../components/auth/AuthModal';
 import {
   PageContainer,
   SectionHeader,
   GlassPanel,
   Button,
+  Badge,
   StateSwitcher,
   usePageState,
   LoadingState,
@@ -28,6 +34,9 @@ export const AccountPage: React.FC = () => {
   const [sessionSaved, setSessionSaved] = useState(false);
   const [resetConfirmed, setResetConfirmed] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const { user, isAuthenticated, guestSessionId, logout } = useAuth();
 
   // Account operates within a clean, neutral sanctuary atmosphere
   useSetAtmosphere(null);
@@ -140,6 +149,118 @@ export const AccountPage: React.FC = () => {
 
       {pageState === 'populated' && (
         <div className="max-w-3xl space-y-6 font-sans">
+          {/* Identity & Session Credentials */}
+          <GlassPanel elevation="plate" padding="lg" rounded="2xl" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-luminous-cyan/15 border border-luminous-cyan/30 flex items-center justify-center text-luminous-cyan">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-editorial text-xl font-bold text-theme-primary leading-tight">
+                    Identity & Authentication
+                  </h3>
+                  <span className="text-[11px] text-theme-muted">
+                    PostgreSQL authoritative session and cryptographic identity
+                  </span>
+                </div>
+              </div>
+              {isAuthenticated ? (
+                <Badge variant="teal" size="sm" dot>
+                  Authenticated
+                </Badge>
+              ) : (
+                <Badge variant="amber" size="sm">
+                  Guest Exploration
+                </Badge>
+              )}
+            </div>
+
+            {isAuthenticated && user ? (
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-stone-50/90 dark:bg-obsidian-surface border border-stone-200/80 dark:border-white/5">
+                  <div>
+                    <span className="text-[11px] text-theme-muted uppercase tracking-wider font-semibold block mb-0.5">
+                      Email Credential
+                    </span>
+                    <span className="text-xs font-medium text-theme-primary">{user.email}</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-theme-muted uppercase tracking-wider font-semibold block mb-0.5">
+                      Curator Handle
+                    </span>
+                    <span className="text-xs font-medium text-theme-primary">
+                      {user.username || 'Unassigned'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-theme-muted uppercase tracking-wider font-semibold block mb-0.5">
+                      Session Model
+                    </span>
+                    <span className="text-xs font-medium text-luminous-cyan">
+                      Authoritative DB Session (Rotating Refresh)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-theme-muted uppercase tracking-wider font-semibold block mb-0.5">
+                      Account Status
+                    </span>
+                    <span className="text-xs font-medium text-emerald-500">
+                      Active &bull; Argon2id Secured
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-theme-muted">
+                    Revoking your session invalidates active refresh tokens across this device.
+                  </span>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leftIcon={<LogOut className="w-3.5 h-3.5" />}
+                    onClick={() => {
+                      logout();
+                      notify('Session terminated and credentials revoked.');
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 leading-relaxed">
+                  <div className="font-semibold text-amber-300 mb-1 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5" />
+                    <span>Anonymous Discovery Session Active</span>
+                  </div>
+                  You are exploring Veya Luma in guest mode. Your taste discoveries, preferences, and watchlist
+                  are preserved locally. Creating an account or signing in will reconcile this guest session
+                  with your persistent identity.
+                </div>
+
+                {guestSessionId && (
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 text-[11px] font-mono text-slate-400">
+                    <span>Session Token:</span>
+                    <span className="truncate max-w-[200px]">{guestSessionId}</span>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<LogIn className="w-3.5 h-3.5" />}
+                    onClick={() => setAuthModalOpen(true)}
+                  >
+                    Sign In or Create Account
+                  </Button>
+                </div>
+              </div>
+            )}
+          </GlassPanel>
+
           {/* Appearance & Base Theme Settings */}
           <GlassPanel elevation="plate" padding="lg" rounded="2xl" className="space-y-4">
             <div>
@@ -370,6 +491,7 @@ export const AccountPage: React.FC = () => {
           </GlassPanel>
         </div>
       )}
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </PageContainer>
   );
 };

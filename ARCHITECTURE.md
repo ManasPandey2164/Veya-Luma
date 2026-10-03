@@ -115,15 +115,37 @@ The system is architected as a **production-oriented modular monolith** designed
   ├── db/                     # Persistence Layer
   │   ├── session.py          # Async engine & sessionmaker factory
   │   └── base.py             # Declarative base model imports
+  ├── domain/                 # Domain boundary & normalization
+  │   └── movie/              # Identity, normalizer, taxonomy, provenance, mapper
   ├── models/                 # SQLAlchemy 2.0 Declarative ORM Models
-  │   ├── movie.py            # Movie, MovieAlias, Credit, Person
-  │   ├── taxonomy.py         # TaxonomyNode, TaxonomyAlias, MovieTag, Evidence
-  │   ├── user.py             # User, UserProfile, Account
-  │   ├── feedback.py         # UserMovieEvent, UserMovieSignal, UserPreference
-  │   ├── availability.py     # AvailabilityOffer, Certification
-  │   └── telemetry.py        # RecommendationRequest, Slate, RecommendationEvent
+  ├── repositories/           # Read-only persistence repositories (MovieRepository)
+  ├── schemas/                # Decoupled Pydantic API response schemas
+  ├── services/               # Application services (MovieCatalogService, Ingestion)
+  └── providers/              # Upstream vendor adapters (TMDB rate-limited client)
+```
+
+#### Read-Only Catalog Architecture (Phase 2 Step 15)
+To prevent coupling API contracts to persistence details or introducing N+1 queries, the catalog read subsystem adheres to a strict four-layer separation:
+1. **API Router (`app/api/v1/endpoints/movies.py`)**: Read-only HTTP endpoints (`GET /api/v1/movies`, `GET /api/v1/movies/{id}`, `GET /api/v1/movies/search`).
+2. **Service Layer (`app/services/movie_catalog.py`)**: Business logic, UUID validation, pagination bounds, and ORM-to-Pydantic transformations (`MovieListItem`, `MovieDetail`, `PaginatedResponse`).
+3. **Repository Layer (`app/repositories/movie.py`)**: Asynchronous PostgreSQL queries with explicit eager loading (`selectinload` for artwork, taxonomy tags, credits), multi-axis taxonomy filtering (`genre`, `theme`, `mood`, `style`), and deterministic ordering.
+4. **ORM Models (`app/models/movie.py`)**: Relational PostgreSQL tables with check constraints and index utilization.
+
+#### Authentication, User Accounts & Session Persistence (Phase 3 Step 16)
+To support personalized movie discovery without sacrificing privacy or relying solely on stateless tokens:
+1. **Argon2id Password Security (`app/core/security.py`)**: Password hashing using Argon2id with memory-hard parameters (64 MiB RAM, 2 iterations, parallelism 1) and constant-time verification. Plaintext passwords are never logged or stored; password hashes are never exposed via APIs.
+2. **Authoritative PostgreSQL Sessions (`user_session`)**: Sessions are persisted in PostgreSQL as the authoritative state. Stateless JWTs alone are not trusted for revocation.
+3. **Rotating Refresh Token Strategy**: High-entropy cryptographically random refresh tokens (48 bytes URL-safe) are transmitted via secure HTTP-only cookies (`veya_refresh_token`). Only SHA-256 digests are persisted in PostgreSQL. On each refresh, the previous credential is invalidated, the session is rotated with a new credential, and a new 15-minute JWT access token is issued.
+4. **Anonymous Guest Sessions**: Visitors can explore the discovery catalog without an account. A transient `user_session` with `user_id = NULL` tracks the guest session.
+5. **Guest → Registered Reconciliation**: When an anonymous visitor registers or logs in with `guest_session_id`, the session repository transitions the guest session to the authenticated user via `reconciled_user_id` and `reconciled_at`, establishing the identity bridge for future preference migrations.
+6. **Reusable Dependency (`app/api/deps.py`)**: `get_current_user` extracts the Bearer token, validates the JWT signature and claims, verifies that the backing PostgreSQL session is unrevoked and unexpired, and confirms the user account is active.
+
+#### Frontend Data Layer & Fallback Strategy
+* **Preferred Source:** Live FastAPI backend endpoints (`/api/v1/movies`, `/api/v1/movies/{id}`, `/api/v1/movies/search`).
+* **Fallback Strategy:** If the backend is unreachable or during offline UI testing, the frontend seamlessly falls back to pre-packaged `MOVIE_FIXTURES` without UI flickering or component breakage.
+  │   └── movie.py            # Movie, MovieCollection, SourceIdentity, Artwork, Provenance, Credit, TaxonomyNode, MovieTag
   ├── schemas/                # Pydantic v2 DTOs (Request / Response validation)
-  │   ├── movie.py
+  │   ├── movie.py            # CanonicalMovie, Source Models, IdentityResolution
   │   ├── taste.py
   │   ├── recommendation.py
   │   └── feedback.py
@@ -131,7 +153,12 @@ The system is architected as a **production-oriented modular monolith** designed
   │   ├── catalog_service.py  # Movie metadata retrieval & search
   │   ├── taste_service.py    # Onboarding logic, duel generation, stopping criteria
   │   ├── feedback_service.py # Event logging & preference signal updates
-  │   └── tmdb_service.py     # TMDB client with rate-limiting & caching
+  │   └── ingestion/          # TMDB catalog acquisition & ingestion service
+  │       ├── collector.py    # Bounded TMDB pagination & detail collector
+  │       ├── schemas.py      # IngestionConfig & IngestionStats models
+  │       └── service.py      # CanonicalMovie normalization & persistence orchestrator
+  ├── cli/                    # Administrative & developer operational CLIs
+  │   └── ingest.py           # Controlled catalog ingestion CLI
   ├── recommender/            # Recommendation Subsystem
   │   ├── pipeline.py         # Master recommendation pipeline orchestrator
   │   ├── candidates/         # Candidate generators (Popularity, Content, Onboarding)
@@ -194,6 +221,75 @@ The system is architected as a **production-oriented modular monolith** designed
 * **Privacy & Data Governance:**
   * Right to erasure: Complete deletion of user profiles, library, ratings, and explicit taste preferences upon user request.
   * Anonymized recommendation event logs: Retain interaction patterns for offline model evaluation with user identifiers stripped or cryptographically salted.
+
+### 3.5 TMDB Catalog Acquisition & Ingestion Architecture (Step 14)
+
+The catalog acquisition and ingestion pipeline enables controlled, bounded data acquisition from TMDB into the canonical PostgreSQL catalog:
+
+```text
+TMDB API
+   │
+   ▼
+[TMDBClient] ──> Token-Bucket Rate Limiter (20 req/s) + Exponential Backoff Retry (429/5xx)
+   │
+   ▼
+[TMDBCollector] ──> Bounded Discovery Pagination & Full Details (/movie/{id}?append=credits,keywords)
+   │
+   ▼
+[MovieNormalizer] ──> CanonicalMovie Domain Entity + Validation (Invariants, Temporal, Taxonomy)
+   │
+   ▼
+[CatalogIngestionService]
+   ├── Identity Resolution: Check source_identity (source='tmdb', external_id) & canonical UUIDv5
+   ├── Duplicate Prevention: In-place update/merge for existing records; insert for new records
+   ├── Franchise Deduplication: Shared movie_collection lookup by external_id
+   ├── Audit Provenance: Payload SHA-256 digest + field-level derivation tracking
+   └── PostgreSQL Persistence: Relational commit across movie, artwork, credits, provenance, tags
+```
+
+* **Core Principles:**
+  * **Provider Separation:** TMDB is strictly an upstream provider, never the canonical domain schema.
+  * **Deterministic Synthetic UUIDs:** Deterministic UUIDv5 identifiers (`generate_canonical_movie_id("tmdb", tmdb_id)`) are generated in the internal namespace.
+  * **Controlled & Bounded Execution:** All crawling and ingestion is bounded by `max_pages` and `max_movies` to prevent runaway crawler loops.
+  * **Zero Secret Leakage:** Authentication headers and query parameters are masked and never logged.
+  * **Zero Binary Downloads:** Stores artwork URLs and paths only; never downloads TMDB image binaries.
+
+### 3.6 User Preferences, Taste Signals & Feedback Persistence Architecture (Step 17)
+
+Step 17 establishes the persistent relational foundation for all downstream recommendation systems:
+
+```text
+User / Guest Interaction
+        │
+        ▼
+[deps.get_actor_identity]
+  ├── Bearer JWT ─────────────> Authenticated User (user_id + session_id)
+  └── X-Session-ID (active) ──> Guest Session (session_id, user_id=None)
+        │
+        ├── Feedback Endpoint (/api/v1/feedback/event, /api/v1/feedback/rate)
+        │     ├── FeedbackService
+        │     │     ├── UserMovieEventRepository ──> user_movie_event (append-only stream)
+        │     │     └── MovieRatingRepository    ──> movie_rating (authoritative 1:1 state)
+        │
+        ├── Preferences Endpoint (/api/v1/preferences)
+        │     └── PreferenceService
+        │           └── UserPreferenceRepository ──> user_preference (bounded -1.0 to 1.0 affinity)
+        │
+        └── Library Endpoint (/api/v1/library/watchlist, /api/v1/library/favourites)
+              └── LibraryService
+                    ├── WatchlistRepository      ──> watchlist (unique user_id, movie_id)
+                    └── FavouriteRepository      ──> favourite (unique user_id, movie_id)
+```
+
+* **Separation of History and Current State:**
+  - `user_movie_event` records immutable append-only telemetry (`impression`, `detail_view`, `click`, `rating`).
+  - `movie_rating` stores the user's active, authoritative rating ($1.0 \le r \le 10.0$) with $O(1)$ query efficiency.
+* **Guest Activity & Reconciliation Flow:**
+  - Anonymous visitors generate telemetry events stamped with their active PostgreSQL `session_id`.
+  - Upon user registration or login, `LibraryService.reconcile_guest_activity` reconciles guest events to the new `user_id` and idempotently imports client-side guest watchlist and favourite entries without creating fake guest users.
+* **Bounded Taxonomy Affinities:**
+  - `user_preference` models explicit affinity toward canonical taxonomy nodes (`genre`, `theme`, `mood`, `style`), verified against pre-seeded taxonomy tables.
+* **Strict Boundary:** No recommendation scoring, candidate generation, MMR, vector embeddings, ML models, Redis, or Celery.
 
 ---
 

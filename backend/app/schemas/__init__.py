@@ -1,4 +1,25 @@
+from app.schemas.catalog import (
+    MovieDetail,
+    MovieListItem,
+    PaginatedResponse,
+)
+from app.schemas.feedback import (
+    MovieEventRequest,
+    MovieEventResponse,
+    MovieRateRequest,
+    MovieRatingResponse,
+    PaginatedRatingsResponse,
+)
 from app.schemas.health import HealthResponse
+from app.schemas.library import (
+    FavouriteAddRequest,
+    LibraryActionResponse,
+    LibraryItemResponse,
+    PaginatedLibraryResponse,
+    ReconcileLibraryRequest,
+    ReconcileLibraryResponse,
+    WatchlistAddRequest,
+)
 from app.schemas.movie import (
     ArtworkReference,
     CanonicalMovie,
@@ -13,6 +34,12 @@ from app.schemas.movie import (
     ResolutionAction,
     TMDBRawMovie,
     WikidataRawMovie,
+)
+from app.schemas.preference import (
+    TaxonomyNodeSummary,
+    UserPreferenceListResponse,
+    UserPreferenceResponse,
+    UserPreferenceUpsertRequest,
 )
 
 __all__ = [
@@ -30,5 +57,23 @@ __all__ = [
     "WikidataRawMovie",
     "IdentityResolutionResult",
     "ResolutionAction",
+    "MovieListItem",
+    "MovieDetail",
+    "PaginatedResponse",
+    "MovieRateRequest",
+    "MovieRatingResponse",
+    "PaginatedRatingsResponse",
+    "MovieEventRequest",
+    "MovieEventResponse",
+    "TaxonomyNodeSummary",
+    "UserPreferenceUpsertRequest",
+    "UserPreferenceResponse",
+    "UserPreferenceListResponse",
+    "WatchlistAddRequest",
+    "FavouriteAddRequest",
+    "LibraryItemResponse",
+    "PaginatedLibraryResponse",
+    "LibraryActionResponse",
+    "ReconcileLibraryRequest",
+    "ReconcileLibraryResponse",
 ]
-

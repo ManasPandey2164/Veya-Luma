@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, Sliders, User, Compass, Sparkles, Film, Bookmark, Settings } from 'lucide-react';
+import { Search, Sliders, User, Compass, Sparkles, Film, Bookmark, Settings, LogIn, LogOut } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { CelestialPrism } from './ui/CelestialPrism';
+import { useAuth } from '../context/useAuth';
+import { AuthModal } from './auth/AuthModal';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const primaryNav = [
     { name: 'Discover', path: '/discover', icon: Compass },
@@ -114,8 +118,43 @@ export const Navbar: React.FC = () => {
               );
             })}
           </nav>
+
+          {/* Authentication Status / Action */}
+          {isAuthenticated ? (
+            <div className="flex items-center gap-1.5 pl-1.5 border-l border-black/10 dark:border-white/10">
+              <Link
+                to="/profile"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/10 dark:hover:bg-white/15 text-theme-primary transition-colors max-w-[120px]"
+                title={user?.email}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span className="truncate">{user?.display_name || user?.username || 'Curator'}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="p-1.5 rounded-full text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 dark:text-slate-400 dark:hover:text-rose-400 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-luminous-cyan/15 text-luminous-cyan hover:bg-luminous-cyan/25 border border-luminous-cyan/30 transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-luminous-cyan"
+              aria-label="Sign In or Register"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign In</span>
+            </button>
+          )}
         </div>
       </div>
+
+      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </header>
   );
 };

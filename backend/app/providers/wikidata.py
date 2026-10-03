@@ -29,8 +29,16 @@ class WikidataProvider:
         claims = entity_payload.get("claims", {})
 
         # Extract label (English default or first available)
-        label_text = labels.get("en", {}).get("value") if isinstance(labels.get("en"), dict) else entity_payload.get("label")
-        desc_text = descriptions.get("en", {}).get("value") if isinstance(descriptions.get("en"), dict) else entity_payload.get("description")
+        label_text = (
+            labels.get("en", {}).get("value")
+            if isinstance(labels.get("en"), dict)
+            else entity_payload.get("label")
+        )
+        desc_text = (
+            descriptions.get("en", {}).get("value")
+            if isinstance(descriptions.get("en"), dict)
+            else entity_payload.get("description")
+        )
 
         # Extract identifiers from claims if present
         imdb_id = entity_payload.get("imdb_id")
@@ -39,12 +47,19 @@ class WikidataProvider:
         if "P345" in claims and not imdb_id:  # IMDb ID property
             p345_claims = claims["P345"]
             if p345_claims and isinstance(p345_claims, list):
-                imdb_id = p345_claims[0].get("mainsnak", {}).get("datavalue", {}).get("value")
+                imdb_id = (
+                    p345_claims[0].get("mainsnak", {}).get("datavalue", {}).get("value")
+                )
 
         if "P4985" in claims and not tmdb_id:  # TMDB ID property
             p4985_claims = claims["P4985"]
             if p4985_claims and isinstance(p4985_claims, list):
-                tmdb_id = str(p4985_claims[0].get("mainsnak", {}).get("datavalue", {}).get("value"))
+                tmdb_id = str(
+                    p4985_claims[0]
+                    .get("mainsnak", {})
+                    .get("datavalue", {})
+                    .get("value")
+                )
 
         return WikidataRawMovie(
             qid=str(qid).strip(),

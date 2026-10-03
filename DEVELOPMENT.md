@@ -103,9 +103,13 @@ GRANT ALL PRIVILEGES ON DATABASE veya_luma TO veya_admin;
    PROJECT_NAME="Veya Luma"
    API_V1_STR=/api/v1
    SECRET_KEY=change_this_to_a_secure_random_64_character_hex_string_for_dev
-   ALGORITHM=HS256
+   JWT_SECRET_KEY=
+   JWT_ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=15
    REFRESH_TOKEN_EXPIRE_DAYS=7
+   GUEST_SESSION_EXPIRE_DAYS=30
+   AUTH_COOKIE_NAME=veya_refresh_token
+   AUTH_COOKIE_SECURE=false
 
    # Database Connection
    DATABASE_URL=postgresql+asyncpg://veya_admin:obsidian_chamber_secret@localhost:5432/veya_luma
@@ -132,9 +136,112 @@ GRANT ALL PRIVILEGES ON DATABASE veya_luma TO veya_admin;
    * Interactive API docs: `http://localhost:8000/docs`
    * Health check: `http://localhost:8000/health/live`
 
+8. **Execute TMDB Catalog Ingestion (Step 14):**
+   ```bash
+   # Dry-run: discover, parse, normalize, and validate without database writes
+   python -m app.cli.ingest --pages 2 --movies 20 --dry-run
+
+   # Live bounded ingestion with configured TMDB credentials
+   python -m app.cli.ingest --pages 2 --movies 40
+
+   # Offline test ingestion using curated sample fixtures
+   python -m app.cli.ingest --offline-sample
+   ```
+
+### 3.3 Authentication & Session Workflows (Step 16)
+
+Veya Luma implements hybrid JWT + PostgreSQL authoritative persistent sessions with Argon2id password security:
+1. **Anonymous Guest Sessions:**
+   Visitors can explore discovery feeds anonymously. A transient session is created in `user_session` with `user_id = NULL`:
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/guest -H "Content-Type: application/json" -d "{}"
+   ```
+2. **Account Registration & Reconciliation:**
+   Passwords must be 8-128 characters long and contain uppercase, lowercase, and a number or symbol. Passing an existing `guest_session_id` automatically reconciles the guest session:
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/register \
+     -H "Content-Type: application/json" \
+     -d "{\"email\":\"curator@veyaluma.internal\",\"password\":\"SecurePassword123!\",\"username\":\"auteur\",\"guest_session_id\":\"<UUID>\"}"
+   ```
+3. **Login & Session Management:**
+   Returns short-lived (15 min) JWT access token and issues rotating refresh token via HTTP-only cookie `veya_refresh_token`:
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d "{\"email\":\"curator@veyaluma.internal\",\"password\":\"SecurePassword123!\"}"
+   ```
+4. **Token Refresh (Rotation):**
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/auth/refresh \
+     -H "Content-Type: application/json" \
+     -d "{\"refresh_token\":\"<raw_token>\"}"
+   ```
+5. **Inspecting Current Profile:**
+   ```bash
+   curl http://localhost:8000/api/v1/auth/me -H "Authorization: Bearer <access_token>"
+   ```
+
 ---
 
-### 3.3 Frontend Setup (React + Vite + Tailwind CSS)
+### 3.5 Taste Signals, Feedback & Library Workflows (Step 17)
+
+Step 17 provides persistent data collection for ratings, telemetry, explicit taxonomy affinities, and curated collections:
+
+1. **Log Interaction Telemetry (Impressions, Clicks, Detail Views):**
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/feedback/event \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -d '{"movie_id":"<MOVIE_UUID>","event_type":"detail_view","source":"detail_page"}'
+   ```
+   *Guest sessions can log events by omitting the Bearer token and supplying `-H "X-Session-ID: <GUEST_UUID>"`.
+
+2. **Rate a Movie:**
+   ```bash
+   curl -X POST http://localhost:8000/api/v1/feedback/rate \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -d '{"movie_id":"<MOVIE_UUID>","rating":8.5,"source":"detail_page"}'
+   ```
+
+3. **Manage Watchlist:**
+   ```bash
+   # Add movie to watchlist
+   curl -X POST http://localhost:8000/api/v1/library/watchlist \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -d '{"movie_id":"<MOVIE_UUID>"}'
+
+   # Remove movie from watchlist
+   curl -X DELETE http://localhost:8000/api/v1/library/watchlist/<MOVIE_UUID> \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+4. **Manage Favourites:**
+   ```bash
+   # Add movie to favourites
+   curl -X POST http://localhost:8000/api/v1/library/favourites \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -d '{"movie_id":"<MOVIE_UUID>"}'
+
+   # Remove movie from favourites
+   curl -X DELETE http://localhost:8000/api/v1/library/favourites/<MOVIE_UUID> \
+     -H "Authorization: Bearer <access_token>"
+   ```
+
+5. **Explicit Taxonomy Affinities:**
+   ```bash
+   # Set affinity for a taxonomy node (e.g. Neo-Noir or Cyberpunk)
+   curl -X PUT http://localhost:8000/api/v1/preferences/<NODE_INT_ID> \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <access_token>" \
+     -d '{"affinity":0.9,"source":"onboarding"}'
+   ```
+
+---
+
+### 3.4 Frontend Setup (React + Vite + Tailwind CSS)
 
 The frontend architecture implements the 20 screen specifications defined in Stitch Project ID `6658946113334506031` ("Veya Luma Cinematic Discovery").
 

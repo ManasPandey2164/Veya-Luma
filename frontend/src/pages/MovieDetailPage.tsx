@@ -13,13 +13,20 @@ import {
   Globe,
   Clock,
   Sparkles,
+  Star,
 } from 'lucide-react';
 import {
   getMovieFixtureById,
   getRelatedMovieFixtures,
   type MovieFixture,
 } from '../fixtures/movieFixtures';
-import { useLibraryOptional, useSetAtmosphere, useAtmosphere } from '../context';
+import { fetchMovieDetail, mapMovieDetailToFixture } from '../services/api';
+import { useLibraryOptional, useSetAtmosphere, useAtmosphere, useAuth } from '../context';
+import {
+  rateMovieApi,
+  fetchMovieRatingApi,
+  recordTelemetryEventApi,
+} from '../services/feedbackApi';
 import {
   PageContainer,
   GlassPanel,
@@ -40,8 +47,30 @@ export const MovieDetailPage: React.FC = () => {
   const [pageState, setPageState] = usePageState('populated');
   const navigate = useNavigate();
 
-  // Centralized fixture lookup strictly by route ID
-  const movie: MovieFixture | undefined = movieId ? getMovieFixtureById(movieId) : undefined;
+  // Baseline fixture lookup strictly by route ID
+  const fixtureMovie: MovieFixture | undefined = movieId ? getMovieFixtureById(movieId) : undefined;
+  const [liveMovie, setLiveMovie] = React.useState<MovieFixture | null>(null);
+
+  // Fetch live detail from backend API if available
+  React.useEffect(() => {
+    if (!movieId) return;
+    let isMounted = true;
+    fetchMovieDetail(movieId)
+      .then((detail) => {
+        if (isMounted) {
+          setLiveMovie(mapMovieDetailToFixture(detail));
+        }
+      })
+      .catch(() => {
+        // Fallback silently to fixtureMovie during offline or error states
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [movieId]);
+
+  // Preferred live API detail, fixture fallback
+  const movie: MovieFixture | undefined = liveMovie || fixtureMovie;
   const relatedMovies = movie ? getRelatedMovieFixtures(movie.id) : [];
 
   // Contextual cinematic atmosphere resolved directly from the film's primary genre
@@ -52,13 +81,50 @@ export const MovieDetailPage: React.FC = () => {
   // Centralized shared library context with fallback for standalone tests
   const libraryContext = useLibraryOptional();
 
+  const { isAuthenticated, accessToken, guestSessionId } = useAuth();
+
   // Local fallback interaction states
   const [localWatchlisted, setLocalWatchlisted] = React.useState(false);
   const [localFavorite, setLocalFavorite] = React.useState(false);
   const [feedbackNotice, setFeedbackNotice] = React.useState<string | null>(null);
 
+  // Rating interaction states
+  const [userRating, setUserRating] = React.useState<number | null>(null);
+  const [hoverScore, setHoverScore] = React.useState<number | null>(null);
+  const [isRatingSubmitting, setIsRatingSubmitting] = React.useState(false);
+
   const isWatchlisted = libraryContext && movie ? libraryContext.isWatchlisted(movie.id) : localWatchlisted;
   const isFavorite = libraryContext && movie ? libraryContext.isFavourite(movie.id) : localFavorite;
+
+  // 1. Fetch user rating from backend if authenticated
+  React.useEffect(() => {
+    if (!movie || !isAuthenticated || !accessToken) return;
+    let isMounted = true;
+    fetchMovieRatingApi(movie.id, accessToken)
+      .then((data) => {
+        if (isMounted && data) {
+          setUserRating(data.rating);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [movie, isAuthenticated, accessToken]);
+
+  // 2. Record behavioral telemetry event: detail_view
+  React.useEffect(() => {
+    if (!movie) return;
+    recordTelemetryEventApi(
+      {
+        movie_id: movie.id,
+        event_type: 'detail_view',
+        source: 'movie_detail',
+      },
+      accessToken,
+      guestSessionId
+    );
+  }, [movie, accessToken, guestSessionId]);
 
   React.useEffect(() => {
     if (movie) {
@@ -70,6 +136,31 @@ export const MovieDetailPage: React.FC = () => {
       }
     }
   }, [movie]);
+
+  const handleRate = async (score: number) => {
+    if (!movie) return;
+    setIsRatingSubmitting(true);
+    const prevRating = userRating;
+    setUserRating(score);
+
+    if (isAuthenticated && accessToken) {
+      try {
+        await rateMovieApi(movie.id, score, accessToken);
+        setFeedbackNotice(`Rated "${movie.title}" ${score}/10`);
+      } catch (err) {
+        setUserRating(prevRating);
+        const msg = err instanceof Error ? err.message : 'Failed to submit rating';
+        setFeedbackNotice(msg);
+      } finally {
+        setIsRatingSubmitting(false);
+      }
+    } else {
+      // Guest rating saved locally
+      setFeedbackNotice(`Rated "${movie.title}" ${score}/10 (Guest — Sign in to save permanently)`);
+      setIsRatingSubmitting(false);
+    }
+    setTimeout(() => setFeedbackNotice(null), 3500);
+  };
 
   const handleToggleWatchlist = () => {
     if (!movie) return;
@@ -288,6 +379,49 @@ export const MovieDetailPage: React.FC = () => {
                     >
                       {isFavorite ? 'Favorited' : 'Add to Favourites'}
                     </Button>
+
+                    {/* Curatorial Rating Suite */}
+                    <div
+                      data-testid="movie-rating-control"
+                      className="flex items-center gap-1 px-2 py-1 rounded-xl bg-obsidian-plate/90 border border-slate-700/80 shadow-md backdrop-blur-md"
+                    >
+                      <div className="flex items-center gap-1 pr-1.5 text-xs text-slate-300 font-sans border-r border-slate-700/60">
+                        <Star
+                          className="w-3.5 h-3.5 text-amber-400"
+                          fill={userRating ? 'currentColor' : 'none'}
+                        />
+                        <span className="font-mono text-white text-[11px] font-semibold">
+                          {userRating ? `${userRating}/10` : 'Rate'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-0.5" role="group" aria-label="Rate movie from 1 to 10">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                          const isActive =
+                            hoverScore !== null
+                              ? score <= hoverScore
+                              : userRating !== null && score <= userRating;
+                          return (
+                            <button
+                              key={score}
+                              type="button"
+                              disabled={isRatingSubmitting}
+                              onClick={() => handleRate(score)}
+                              onMouseEnter={() => setHoverScore(score)}
+                              onMouseLeave={() => setHoverScore(null)}
+                              aria-label={`Rate ${score} out of 10`}
+                              title={`Rate ${score}/10`}
+                              className={`w-5 h-5 rounded text-[10px] font-mono transition-all flex items-center justify-center cursor-pointer ${
+                                isActive
+                                  ? 'bg-amber-400 text-obsidian-void font-bold shadow-xs shadow-amber-400/40 scale-105'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                              } disabled:opacity-50`}
+                            >
+                              {score}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Local Feedback Toast / Notice */}

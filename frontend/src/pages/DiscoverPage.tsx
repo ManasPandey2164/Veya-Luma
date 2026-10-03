@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowRight,
   Bookmark,
@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../utils/cn';
 import { DISCOVERY_SEEDS } from '../data/discoverySeeds';
 import { MOVIE_FIXTURES, type MovieFixture } from '../fixtures/movieFixtures';
+import { fetchMovies, mapMovieListItemToFixture } from '../services/api';
 
 import {
   PageContainer,
@@ -37,6 +38,7 @@ export const DiscoverPage: React.FC = () => {
   const [pageState, setPageState] = usePageState('populated');
   const [searchPrompt, setSearchPrompt] = useState('');
   const [nlFeedback, setNlFeedback] = useState<string | null>(null);
+  const [liveMovies, setLiveMovies] = useState<MovieFixture[] | null>(null);
   const navigate = useNavigate();
 
   // Centralized shared library context with fallback for standalone test harnesses
@@ -50,6 +52,23 @@ export const DiscoverPage: React.FC = () => {
       {}
     )
   );
+
+  // Fetch live movies from FastAPI backend with graceful fallback to fixtures
+  useEffect(() => {
+    let isMounted = true;
+    fetchMovies({ limit: 20 })
+      .then((data) => {
+        if (isMounted && data.items && data.items.length > 0) {
+          setLiveMovies(data.items.map(mapMovieListItemToFixture));
+        }
+      })
+      .catch(() => {
+        // Fallback silently to fixtures during offline or error states
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const isMovieWatchlisted = (movieId: string): boolean => {
     if (library) {
@@ -69,35 +88,44 @@ export const DiscoverPage: React.FC = () => {
     }
   };
 
-  // Primary hero movie showcase (top fixture)
-  const heroMovie: MovieFixture = MOVIE_FIXTURES[0];
+  // Primary hero movie showcase (preferred live API, fixture fallback)
+  const heroMovie: MovieFixture = liveMovies && liveMovies.length > 0 ? liveMovies[0] : MOVIE_FIXTURES[0];
   const isHeroWatchlisted = isMovieWatchlisted(heroMovie.id);
 
   // Contextual cinematic atmosphere driven by the hero presentation's primary genre
   useSetAtmosphere(heroMovie?.genres[0] || null);
 
-  // Pre-curated fixture subsets for deliberate editorial shelves
-  const featuredMovies = [
-    MOVIE_FIXTURES[2], // Arrival (2016)
-    MOVIE_FIXTURES[1], // Solaris (1972)
-    MOVIE_FIXTURES[7], // Parasite (2019)
-    MOVIE_FIXTURES[0], // Blade Runner 2049 (2017)
-    MOVIE_FIXTURES[4], // Drive (2011)
-  ];
+  // Pre-curated fixture subsets for deliberate editorial shelves with live enhancement
+  const featuredMovies =
+    liveMovies && liveMovies.length >= 5
+      ? liveMovies.slice(0, 5)
+      : [
+          MOVIE_FIXTURES[2], // Arrival (2016)
+          MOVIE_FIXTURES[1], // Solaris (1972)
+          MOVIE_FIXTURES[7], // Parasite (2019)
+          MOVIE_FIXTURES[0], // Blade Runner 2049 (2017)
+          MOVIE_FIXTURES[4], // Drive (2011)
+        ];
 
-  const forYourTasteMovies = [
-    MOVIE_FIXTURES[0], // Blade Runner 2049
-    MOVIE_FIXTURES[2], // Arrival
-    MOVIE_FIXTURES[1], // Solaris
-    MOVIE_FIXTURES[5], // Memento
-  ];
+  const forYourTasteMovies =
+    liveMovies && liveMovies.length >= 4
+      ? liveMovies.slice(1, 5)
+      : [
+          MOVIE_FIXTURES[0], // Blade Runner 2049
+          MOVIE_FIXTURES[2], // Arrival
+          MOVIE_FIXTURES[1], // Solaris
+          MOVIE_FIXTURES[5], // Memento
+        ];
 
-  const worthExploringMovies = [
-    MOVIE_FIXTURES[4], // Drive
-    MOVIE_FIXTURES[6], // In the Mood for Love
-    MOVIE_FIXTURES[7], // Parasite
-    MOVIE_FIXTURES[5], // Memento
-  ];
+  const worthExploringMovies =
+    liveMovies && liveMovies.length >= 8
+      ? liveMovies.slice(4, 8)
+      : [
+          MOVIE_FIXTURES[4], // Drive
+          MOVIE_FIXTURES[6], // In the Mood for Love
+          MOVIE_FIXTURES[7], // Parasite
+          MOVIE_FIXTURES[5], // Memento
+        ];
 
   const hiddenGemsMovies = [
     MOVIE_FIXTURES[3], // Stalker

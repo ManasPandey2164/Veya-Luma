@@ -50,7 +50,7 @@ def normalize_match_title(title: str) -> str:
     # Strip leading articles
     for article in ("the ", "a ", "an "):
         if cleaned.startswith(article):
-            cleaned = cleaned[len(article):].strip()
+            cleaned = cleaned[len(article) :].strip()
             break
 
     # Retain alphanumeric only
@@ -78,7 +78,9 @@ class IdentityResolver:
     5. New Identity Generation (deterministic UUIDv5)
     """
 
-    def __init__(self, existing_catalog: Optional[Iterable[CanonicalMovie]] = None) -> None:
+    def __init__(
+        self, existing_catalog: Optional[Iterable[CanonicalMovie]] = None
+    ) -> None:
         self._by_id: dict[UUID, CanonicalMovie] = {}
         self._provider_index: dict[tuple[str, str], UUID] = {}
 
@@ -123,7 +125,10 @@ class IdentityResolver:
         # Tier 2: Cross-Source Identifier Match
         if cross_identifiers:
             for cross_id in cross_identifiers:
-                cross_key = (cross_id.source.strip().lower(), str(cross_id.external_id).strip())
+                cross_key = (
+                    cross_id.source.strip().lower(),
+                    str(cross_id.external_id).strip(),
+                )
                 if cross_key in self._provider_index:
                     resolved_uuid = self._provider_index[cross_key]
                     return IdentityResolutionResult(
@@ -153,7 +158,9 @@ class IdentityResolver:
                 # Check director corroboration
                 existing_director = normalize_director_name(existing.credits.director)
                 director_match = (
-                    norm_director and existing_director and norm_director == existing_director
+                    norm_director
+                    and existing_director
+                    and norm_director == existing_director
                 )
 
                 # Check runtime corroboration (within ±5 minutes)
@@ -186,7 +193,11 @@ class IdentityResolver:
                     )
 
                 # Collision / Conflict detection: Identical title but completely divergent director/runtime
-                if norm_director and existing_director and norm_director != existing_director:
+                if (
+                    norm_director
+                    and existing_director
+                    and norm_director != existing_director
+                ):
                     # e.g. Remakes (Solaris 1972 Tarkovsky vs Solaris 2002 Soderbergh)
                     if year_diff is not None and year_diff > 3:
                         # Clear distinct film (remake / unrelated title reuse)
