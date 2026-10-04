@@ -32,6 +32,9 @@ export const MovieListItemSchema = z.object({
   themes: z.array(z.string()).default([]),
   moods: z.array(z.string()).default([]),
   styles: z.array(z.string()).default([]),
+  director: z.string().nullable().optional(),
+  vote_average: z.number().nullable().optional(),
+  popularity: z.number().nullable().optional(),
   poster_path: z.string().nullable().optional(),
   backdrop_path: z.string().nullable().optional(),
   poster_url: z.string().nullable().optional(),
@@ -312,10 +315,10 @@ export function mapMovieListItemToFixture(item: MovieListItem): MovieFixture {
     themes: item.themes || [],
     moods: item.moods || [],
     language: item.original_language || 'en',
-    director: 'Denis Villeneuve',
+    director: item.director || '',
     cast: [],
     tags: item.styles || [],
-    rating: 8.0,
+    rating: item.vote_average ?? 8.0,
     matchScore: 95,
   };
 }
@@ -335,7 +338,7 @@ export function mapMovieDetailToFixture(detail: MovieDetail): MovieFixture {
     detail.credits?.director ||
     (detail.credits?.directors && detail.credits.directors.length > 0
       ? detail.credits.directors[0].name
-      : 'Director');
+      : '');
 
   const castNames = (detail.credits?.cast || []).map((c) => c.name);
 

@@ -273,6 +273,9 @@ async def test_get_movies_list_endpoint(
     assert parsed_item.id is not None
     assert parsed_item.title is not None
     assert isinstance(parsed_item.genres, list)
+    # Expose canonical director
+    directors = [it.get("director") for it in data["items"] if it.get("director")]
+    assert len(directors) == len(data["items"])
 
 
 @pytest.mark.asyncio
@@ -429,6 +432,8 @@ async def test_combined_multi_axis_filtering(
     assert data["total"] >= 1
     titles = [m["title"] for m in data["items"]]
     assert any("Arrival" in t for t in titles)
+    arrival_item = next(m for m in data["items"] if "Arrival" in m["title"])
+    assert arrival_item["director"] == "Denis Villeneuve"
 
 
 @pytest.mark.asyncio

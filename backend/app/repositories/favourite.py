@@ -108,6 +108,7 @@ class FavouriteRepository:
             .limit(limit)
             .options(
                 selectinload(Favourite.movie).selectinload(Movie.artwork),
+                selectinload(Favourite.movie).selectinload(Movie.credits),
                 selectinload(Favourite.movie)
                 .selectinload(Movie.taxonomy_tags)
                 .selectinload(MovieTag.node),

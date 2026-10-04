@@ -1,0 +1,286 @@
+{
+  "evaluation_timestamp": "2026-10-04T12:36:02.411671+00:00",
+  "step": "Step 19 \u2014 Offline Recommendation Evaluation & Calibration",
+  "dataset": {
+    "total_registered_users": 533,
+    "users_with_interactions": 164,
+    "eligible_users_count": 25,
+    "excluded_users_count": 508,
+    "exclusion_reasons": {
+      "zero_interaction_signals": 369,
+      "insufficient_temporal_history": 123,
+      "no_holdout_positives": 16
+    },
+    "is_statistically_significant": false,
+    "limitation_statement": "Real interaction dataset contains 533 registered users and 164 users with interaction records. However, only 25 user(s) possess >= 3 temporal signals with a valid future holdout positive. Insufficient real interaction data for statistically meaningful user-level offline evaluation. Controlled scenario evaluation with real canonical catalog fixtures is used to rigorously verify recommendation mechanics."
+  },
+  "users_evaluated": 33,
+  "precision": {
+    "baseline": {
+      "p5": 0.8286,
+      "p10": 0.8,
+      "p20": 0.7786
+    },
+    "config_b": {
+      "p5": 0.805,
+      "p10": 0.7667,
+      "p20": 0.7284
+    },
+    "config_c": {
+      "p5": 0.7875,
+      "p10": 0.75,
+      "p20": 0.7125
+    }
+  },
+  "recall": {
+    "baseline": {
+      "r5": 0.0125,
+      "r10": 0.0242,
+      "r20": 0.0478
+    },
+    "config_b": {
+      "r5": 0.0127,
+      "r10": 0.0245,
+      "r20": 0.0492
+    },
+    "config_c": {
+      "r5": 0.012,
+      "r10": 0.023,
+      "r20": 0.0469
+    }
+  },
+  "ndcg": {
+    "baseline": {
+      "ndcg5": 0.5756,
+      "ndcg10": 0.5546,
+      "ndcg20": 0.5346
+    },
+    "config_b": {
+      "ndcg5": 0.4986,
+      "ndcg10": 0.4888,
+      "ndcg20": 0.479
+    },
+    "config_c": {
+      "ndcg5": 0.5011,
+      "ndcg10": 0.4913,
+      "ndcg20": 0.4815
+    }
+  },
+  "diversity": {
+    "mean_unique_genres": 11.0,
+    "mean_unique_languages": 4.5,
+    "mean_non_english_share": 0.2,
+    "mean_unique_taxonomy_nodes": 35.5,
+    "mean_unique_eras": 4.0,
+    "mean_unique_directors": 18.5,
+    "mean_intra_list_diversity": 0.7318
+  },
+  "novelty": {
+    "mean_novelty_score": 0.32,
+    "relevant_novelty_score": 0.3038
+  },
+  "catalog_coverage": {
+    "total_catalog_size": 909,
+    "unique_surfaced_movies": 77,
+    "overall_coverage_ratio": 0.0847,
+    "coverage_by_language": {
+      "english": 0.0676,
+      "non_english": 0.303
+    },
+    "coverage_by_popularity_bucket": {
+      "low": 0.0693,
+      "medium": 0.0819,
+      "high": 0.0662,
+      "very_high": 0.1667
+    }
+  },
+  "popularity_bias": {
+    "mean_recommended_popularity": 32.95,
+    "mean_catalog_popularity": 30.6,
+    "recommendation_share": {
+      "low": 0.2437,
+      "medium": 0.5125,
+      "high": 0.125,
+      "very_high": 0.1187
+    },
+    "catalog_share": {
+      "low": 0.2541,
+      "medium": 0.4972,
+      "high": 0.1496,
+      "very_high": 0.099
+    },
+    "exposure_ratios": {
+      "low": 0.96,
+      "medium": 1.03,
+      "high": 0.84,
+      "very_high": 1.2
+    },
+    "popularity_over_indexing": false
+  },
+  "language_coverage": {
+    "english_share": 0.8,
+    "non_english_share": 0.2,
+    "unique_languages_count": 13,
+    "languages": {
+      "de": 0.0063,
+      "en": 0.8,
+      "es": 0.0125,
+      "fr": 0.0437,
+      "id": 0.0063,
+      "it": 0.0063,
+      "ja": 0.05,
+      "kn": 0.0063,
+      "ko": 0.0312,
+      "pt": 0.0063,
+      "ru": 0.0063,
+      "th": 0.0063,
+      "zh": 0.0187
+    },
+    "outside_dominant_language_share": 0.0
+  },
+  "discovery_channel": {
+    "mean_generated_candidates": 80.0,
+    "mean_surviving_candidates": 12.0,
+    "mean_top20_discovery_count": 3.8,
+    "mean_top20_discovery_share": 0.19,
+    "quota_experiments": {
+      "0.15": {
+        "top20_count": 3.8,
+        "coverage": 0.0539
+      },
+      "0.20": {
+        "top20_count": 3.8,
+        "coverage": 0.0539
+      },
+      "0.25": {
+        "top20_count": 3.8,
+        "coverage": 0.0539
+      },
+      "0.35": {
+        "top20_count": 3.8,
+        "coverage": 0.0539
+      }
+    }
+  },
+  "channel_ablation": {
+    "baseline": {
+      "p10": 0.7667,
+      "ndcg10": 0.5018,
+      "novelty": 0.2704,
+      "non_en": 0.1417,
+      "genres": 10.0
+    },
+    "no_content": {
+      "p10": 0.8167,
+      "ndcg10": 0.4318,
+      "novelty": 0.4121,
+      "non_en": 0.3083,
+      "genres": 12.7
+    },
+    "no_preference": {
+      "p10": 0.7667,
+      "ndcg10": 0.5018,
+      "novelty": 0.2704,
+      "non_en": 0.1417,
+      "genres": 10.0
+    },
+    "no_behavior": {
+      "p10": 0.7667,
+      "ndcg10": 0.5018,
+      "novelty": 0.2704,
+      "non_en": 0.1417,
+      "genres": 10.0
+    },
+    "no_discovery": {
+      "p10": 0.85,
+      "ndcg10": 0.7512,
+      "novelty": 0.1925,
+      "non_en": 0.05,
+      "genres": 8.0
+    },
+    "no_popularity": {
+      "p10": 0.7667,
+      "ndcg10": 0.4964,
+      "novelty": 0.2704,
+      "non_en": 0.1417,
+      "genres": 10.2
+    }
+  },
+  "cold_start": {
+    "returned_count": 20,
+    "unique_genres": 16,
+    "unique_languages": 13,
+    "unique_eras": 4,
+    "non_english_share": 0.65,
+    "mean_vote_average": 8.16,
+    "mean_popularity": 71.68
+  },
+  "long_term_vs_recent": {
+    "80_20": {
+      "sf_share": 0.9,
+      "dr_share": 0.9,
+      "both": true
+    },
+    "60_40": {
+      "sf_share": 0.9,
+      "dr_share": 0.8,
+      "both": true
+    },
+    "50_50": {
+      "sf_share": 0.9,
+      "dr_share": 0.8,
+      "both": true
+    },
+    "40_60": {
+      "sf_share": 0.9,
+      "dr_share": 0.8,
+      "both": true
+    }
+  },
+  "explanation_grounding": {
+    "total_explanations_checked": 367,
+    "grounding_violations": 0,
+    "grounding_accuracy": 1.0
+  },
+  "seen_content_suppression": {
+    "rated_suppressed": true,
+    "favourite_suppressed": true,
+    "watchlist_eligible": true,
+    "detail_views_eligible": true,
+    "impressions_eligible": true
+  },
+  "calibration": {
+    "A": {
+      "name": "Configuration A (Step 18 Production Defaults)",
+      "p10": 0.7667,
+      "ndcg10": 0.5018,
+      "novelty": 0.2704,
+      "coverage": 0.0638,
+      "exposure_high": 0.42
+    },
+    "B": {
+      "name": "Configuration B (Calibrated Taste-First)",
+      "p10": 0.7667,
+      "ndcg10": 0.4888,
+      "novelty": 0.2704,
+      "coverage": 0.066,
+      "exposure_high": 0.17
+    },
+    "C": {
+      "name": "Configuration C (Discovery-Heavy Exploration)",
+      "p10": 0.75,
+      "ndcg10": 0.4913,
+      "novelty": 0.2846,
+      "coverage": 0.0605,
+      "exposure_high": 0.17
+    },
+    "D": {
+      "name": "Configuration D (Popularity-Minimized Auteur)",
+      "p10": 0.7667,
+      "ndcg10": 0.4963,
+      "novelty": 0.2704,
+      "coverage": 0.0649,
+      "exposure_high": 0.17
+    }
+  }
+}

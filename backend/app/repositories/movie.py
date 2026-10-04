@@ -175,6 +175,7 @@ class MovieRepository:
             .limit(limit)
             .options(
                 selectinload(Movie.artwork),
+                selectinload(Movie.credits),
                 selectinload(Movie.taxonomy_tags).selectinload(MovieTag.node),
             )
         )
@@ -261,6 +262,7 @@ class MovieRepository:
             .limit(limit)
             .options(
                 selectinload(Movie.artwork),
+                selectinload(Movie.credits),
                 selectinload(Movie.taxonomy_tags).selectinload(MovieTag.node),
             )
         )

@@ -5,9 +5,11 @@ and model-to-schema transformation between repository data and API response sche
 """
 
 import math
+from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.movie import Movie
@@ -62,6 +64,25 @@ class MovieCatalogService:
 
         return genres, themes, moods, styles
 
+    def _extract_director(self, movie: Movie) -> Optional[str]:
+        """Extracts primary director name from movie credits relationship if already loaded."""
+        try:
+            insp = inspect(movie)
+            if "credits" in insp.unloaded:
+                return None
+        except Exception:
+            pass
+
+        if not movie.credits:
+            return None
+        for c in movie.credits:
+            if c.credit_type == "crew":
+                if (c.job and c.job.strip().lower() == "director") or (
+                    c.department and c.department.strip().lower() == "directing"
+                ):
+                    return c.name
+        return None
+
     def _to_list_item(self, movie: Movie) -> MovieListItem:
         """Transforms a Movie ORM model into a lightweight MovieListItem schema."""
         genres, themes, moods, styles = self._extract_taxonomy(movie)
@@ -84,6 +105,7 @@ class MovieCatalogService:
             themes=themes,
             moods=moods,
             styles=styles,
+            director=self._extract_director(movie),
             poster_path=poster_path,
             backdrop_path=backdrop_path,
             poster_url=poster_url,

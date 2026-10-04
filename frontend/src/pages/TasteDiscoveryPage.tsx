@@ -34,7 +34,13 @@ import {
   TasteNavigation,
 } from '../components/taste';
 import { resolveCinematicAtmosphere } from '../theme';
-import { usePreferences, useSetAtmosphere } from '../context';
+import { usePreferences, useSetAtmosphere, useAuth } from '../context';
+import {
+  fetchPreferencesApi,
+  upsertPreferenceApi,
+  resolveTaxonomyNodeId,
+} from '../services/preferenceApi';
+
 
 export type FlowStage = 'welcome' | 'movies' | 'genres' | 'moods' | 'themes' | 'preferences' | 'complete';
 
@@ -75,6 +81,108 @@ export const TasteDiscoveryPage: React.FC = () => {
   const seedMovies = getTasteDiscoverySeedMovies();
 
   const { completeTasteDiscovery, accountPreferences } = usePreferences();
+  const { accessToken, guestSessionId, isAuthenticated } = useAuth();
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Load existing preferences on mount if available
+  React.useEffect(() => {
+    let isMounted = true;
+    const auth = isAuthenticated && accessToken
+      ? { token: accessToken }
+      : { sessionId: guestSessionId };
+
+    if (auth.token || auth.sessionId) {
+      fetchPreferencesApi(auth)
+        .then((res) => {
+          if (!isMounted || !res.items || res.items.length === 0) return;
+          const loadedGenres: string[] = [];
+          const loadedMoods: string[] = [];
+          const loadedThemes: string[] = [];
+
+          for (const item of res.items) {
+            const node = item.taxonomy_node;
+            if (!node) continue;
+            if (node.axis === 'genre') {
+              const matched = TASTE_GENRES.find(
+                (g) =>
+                  g.label.toLowerCase() === node.label.toLowerCase() ||
+                  g.id.toLowerCase() === node.key.toLowerCase().replace('genre.', '')
+              );
+              loadedGenres.push(matched ? matched.label : node.label);
+            } else if (node.axis === 'mood') {
+              const matched = TASTE_MOODS.find(
+                (m) =>
+                  m.label.toLowerCase() === node.label.toLowerCase() ||
+                  m.id.toLowerCase() === node.key.toLowerCase().replace('mood.', '')
+              );
+              loadedMoods.push(matched ? matched.label : node.label);
+            } else if (node.axis === 'theme') {
+              const matched = TASTE_THEMES.find(
+                (t) =>
+                  t.label.toLowerCase() === node.label.toLowerCase() ||
+                  t.id.toLowerCase() === node.key.toLowerCase().replace('theme.', '')
+              );
+              loadedThemes.push(matched ? matched.label : node.label);
+            }
+          }
+
+          setTasteState((prev) => ({
+            ...prev,
+            selectedGenres: loadedGenres.length > 0 ? Array.from(new Set(loadedGenres)) : prev.selectedGenres,
+            selectedMoods: loadedMoods.length > 0 ? Array.from(new Set(loadedMoods)) : prev.selectedMoods,
+            selectedThemes: loadedThemes.length > 0 ? Array.from(new Set(loadedThemes)) : prev.selectedThemes,
+          }));
+        })
+        .catch((err) => {
+          // Graceful non-blocking error handling for initial hydration
+          console.warn('Could not load existing preferences:', err);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [accessToken, guestSessionId, isAuthenticated]);
+
+  const handleSaveAndContinue = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+
+    const auth = isAuthenticated && accessToken
+      ? { token: accessToken }
+      : { sessionId: guestSessionId };
+
+    try {
+      const selectionsToPersist = [
+        ...tasteState.selectedGenres,
+        ...tasteState.selectedMoods,
+        ...tasteState.selectedThemes,
+      ];
+
+      if (selectionsToPersist.length > 0) {
+        const nodeIds = selectionsToPersist
+          .map((label) => resolveTaxonomyNodeId(label))
+          .filter((id): id is number => typeof id === 'number');
+
+        if (nodeIds.length > 0) {
+          await Promise.all(
+            nodeIds.map((nodeId) =>
+              upsertPreferenceApi(nodeId, 1.0, auth, 'taste_discovery')
+            )
+          );
+        }
+      }
+
+      completeTasteDiscovery?.(tasteState);
+      navigate('/discover');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to persist taste preferences. Please try again.';
+      setSaveError(msg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
 
   // Contextual cinematic atmosphere resolved from current genre selection
   const primaryGenre = tasteState.selectedGenres[0] || null;
@@ -597,19 +705,30 @@ export const TasteDiscoveryPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Persistence Error Alert */}
+              {saveError && (
+                <div
+                  role="alert"
+                  className="w-full p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center justify-between gap-4"
+                >
+                  <span>{saveError}</span>
+                  <Button size="sm" variant="outline" onClick={handleSaveAndContinue}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center">
                 <Button
                   size="lg"
                   variant="primary"
-                  rightIcon={<ArrowRight className="w-4 h-4" />}
-                  onClick={() => {
-                    completeTasteDiscovery?.(tasteState);
-                    navigate('/discover');
-                  }}
+                  disabled={isSaving}
+                  rightIcon={isSaving ? undefined : <ArrowRight className="w-4 h-4" />}
+                  onClick={handleSaveAndContinue}
                   className="w-full sm:w-auto font-semibold px-8 shadow-cyan-glow"
                 >
-                  Explore Veya Luma
+                  {isSaving ? 'Persisting Taste Profile...' : 'Explore Veya Luma'}
                 </Button>
 
                 <Button

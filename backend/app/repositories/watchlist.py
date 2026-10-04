@@ -108,6 +108,7 @@ class WatchlistRepository:
             .limit(limit)
             .options(
                 selectinload(Watchlist.movie).selectinload(Movie.artwork),
+                selectinload(Watchlist.movie).selectinload(Movie.credits),
                 selectinload(Watchlist.movie)
                 .selectinload(Movie.taxonomy_tags)
                 .selectinload(MovieTag.node),

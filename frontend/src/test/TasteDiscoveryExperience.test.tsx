@@ -1,8 +1,14 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TasteDiscoveryPage } from '../pages/TasteDiscoveryPage';
+
+vi.mock('../services/preferenceApi', () => ({
+  fetchPreferencesApi: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+  upsertPreferenceApi: vi.fn().mockResolvedValue({ id: 'mock-pref', preference_value: 1.0 }),
+  resolveTaxonomyNodeId: vi.fn().mockReturnValue(1),
+}));
 
 const createTestQueryClient = () =>
   new QueryClient({
@@ -211,7 +217,7 @@ describe('Step 8 — Taste Discovery Experience Specifications', () => {
   });
 
   describe('Full Flow Completion & Discovery Navigation', () => {
-    it('progresses through themes, viewing horizons, and lands on completion screen with summary', () => {
+    it('progresses through themes, viewing horizons, and lands on completion screen with summary', async () => {
       renderTasteDiscoveryPage('/taste-discovery');
 
       // Start
@@ -255,7 +261,9 @@ describe('Step 8 — Taste Discovery Experience Specifications', () => {
       // CTA navigates to /discover
       const exploreBtn = screen.getByRole('button', { name: 'Explore Veya Luma' });
       fireEvent.click(exploreBtn);
-      expect(screen.getByTestId('discover-page-stub')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('discover-page-stub')).toBeInTheDocument();
+      });
     });
   });
 });

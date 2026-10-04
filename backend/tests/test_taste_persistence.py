@@ -789,3 +789,49 @@ async def test_reconcile_endpoint_with_client_movie_ids(
     )
     assert wl.json()["total"] == 1
     assert fav.json()["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_guest_preferences_and_taxonomy_nodes_endpoint(
+    async_client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    """Verifies GET /api/v1/preferences/nodes and guest preference persistence via X-Session-ID."""
+    # 1. Verify GET /api/v1/preferences/nodes
+    nodes_res = await async_client.get("/api/v1/preferences/nodes")
+    assert nodes_res.status_code == 200
+    nodes_data = nodes_res.json()
+    assert len(nodes_data) >= 70
+    first_node = nodes_data[0]
+    assert "id" in first_node
+    assert "key" in first_node
+    assert "label" in first_node
+    assert "axis" in first_node
+
+    # 2. Create guest session
+    guest_res = await async_client.post("/api/v1/auth/guest")
+    assert guest_res.status_code == 201
+    guest_session_id = guest_res.json()["guest_session_id"]
+
+    # 3. Upsert preference for guest session
+    target_node = nodes_data[0]
+    put_res = await async_client.put(
+        f"/api/v1/preferences/{target_node['id']}",
+        headers={"X-Session-ID": guest_session_id},
+        json={"preference_value": 0.9, "source": "taste_discovery"},
+    )
+    assert put_res.status_code == 200
+    put_data = put_res.json()
+    assert put_data["taxonomy_node_id"] == target_node["id"]
+    assert put_data["preference_value"] == 0.9
+    assert put_data["source"] == "taste_discovery"
+
+    # 4. Get preferences for guest session
+    get_res = await async_client.get(
+        "/api/v1/preferences",
+        headers={"X-Session-ID": guest_session_id},
+    )
+    assert get_res.status_code == 200
+    get_data = get_res.json()
+    assert get_data["total"] == 1
+    assert get_data["items"][0]["taxonomy_node_id"] == target_node["id"]

@@ -14,6 +14,11 @@ import { cn } from '../utils/cn';
 import { DISCOVERY_SEEDS } from '../data/discoverySeeds';
 import { MOVIE_FIXTURES, type MovieFixture } from '../fixtures/movieFixtures';
 import { fetchMovies, mapMovieListItemToFixture } from '../services/api';
+import {
+  fetchRecommendationsApi,
+  mapRecommendationItemToFixture,
+} from '../services/recommendationApi';
+
 
 import {
   PageContainer,
@@ -32,14 +37,19 @@ import {
   ErrorState,
 } from '../components/ui';
 
-import { useSetAtmosphere, useLibraryOptional } from '../context';
+import { useSetAtmosphere, useLibraryOptional, useAuth } from '../context';
+
 
 export const DiscoverPage: React.FC = () => {
   const [pageState, setPageState] = usePageState('populated');
   const [searchPrompt, setSearchPrompt] = useState('');
   const [nlFeedback, setNlFeedback] = useState<string | null>(null);
   const [liveMovies, setLiveMovies] = useState<MovieFixture[] | null>(null);
+  const [recommendations, setRecommendations] = useState<MovieFixture[] | null>(null);
+  const [primaryExplanation, setPrimaryExplanation] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const { accessToken, guestSessionId } = useAuth();
 
   // Centralized shared library context with fallback for standalone test harnesses
   const library = useLibraryOptional();
@@ -53,7 +63,7 @@ export const DiscoverPage: React.FC = () => {
     )
   );
 
-  // Fetch live movies from FastAPI backend with graceful fallback to fixtures
+  // Fetch live movies from FastAPI backend catalog for hero spotlight and catalog shelves
   useEffect(() => {
     let isMounted = true;
     fetchMovies({ limit: 20 })
@@ -69,6 +79,34 @@ export const DiscoverPage: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  // Fetch personalized recommendations from recommendation engine for taste shelves
+  useEffect(() => {
+    let isMounted = true;
+    fetchRecommendationsApi({
+      token: accessToken,
+      sessionId: guestSessionId,
+      limit: 12,
+    })
+      .then((data) => {
+        if (isMounted && data.items && data.items.length > 0) {
+          setRecommendations(data.items.map(mapRecommendationItemToFixture));
+          const firstExp = data.items[0]?.explanations?.[0];
+          const summary = firstExp?.evidence?.[0] || firstExp?.label;
+          if (summary) {
+            setPrimaryExplanation(summary);
+          }
+        }
+      })
+      .catch((err) => {
+        // Fallback gracefully during offline or test environments
+        console.warn('Could not load personalized recommendations for Discover:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [accessToken, guestSessionId]);
+
 
   const isMovieWatchlisted = (movieId: string): boolean => {
     if (library) {
@@ -107,9 +145,10 @@ export const DiscoverPage: React.FC = () => {
           MOVIE_FIXTURES[4], // Drive (2011)
         ];
 
+  // Personalized recommendations shelf: "For Your Taste"
   const forYourTasteMovies =
-    liveMovies && liveMovies.length >= 4
-      ? liveMovies.slice(1, 5)
+    recommendations && recommendations.length >= 4
+      ? recommendations.slice(0, 4)
       : [
           MOVIE_FIXTURES[0], // Blade Runner 2049
           MOVIE_FIXTURES[2], // Arrival
@@ -117,15 +156,19 @@ export const DiscoverPage: React.FC = () => {
           MOVIE_FIXTURES[5], // Memento
         ];
 
+  // Secondary personalized exploration shelf: "Worth Exploring"
   const worthExploringMovies =
-    liveMovies && liveMovies.length >= 8
-      ? liveMovies.slice(4, 8)
+    recommendations && recommendations.length >= 8
+      ? recommendations.slice(4, 8)
+      : recommendations && recommendations.length > 4
+      ? recommendations.slice(4)
       : [
           MOVIE_FIXTURES[4], // Drive
           MOVIE_FIXTURES[6], // In the Mood for Love
           MOVIE_FIXTURES[7], // Parasite
           MOVIE_FIXTURES[5], // Memento
         ];
+
 
   const hiddenGemsMovies = [
     MOVIE_FIXTURES[3], // Stalker
@@ -438,19 +481,23 @@ export const DiscoverPage: React.FC = () => {
                 <div>
                   <span className="font-semibold text-white">Why This Section: </span>
                   <span className="text-slate-300">
-                    "Because you enjoy cerebral science fiction, philosophical depth, and contemplative pacing."
+                    {primaryExplanation
+                      ? `"${primaryExplanation}"`
+                      : '"Because you enjoy cerebral science fiction, philosophical depth, and contemplative pacing."'}
                   </span>
-                  <span className="text-slate-400 ml-1.5 opacity-80">(Curated selection)</span>
+                  <span className="text-slate-400 ml-1.5 opacity-80">
+                    {recommendations ? '(Recommendation Engine)' : '(Curated selection)'}
+                  </span>
                 </div>
               </div>
               <div className="text-[11px] text-luminous-cyan/80 shrink-0 font-medium self-end sm:self-center">
-                Curated Resonance Slate
+                {recommendations ? 'Personalized Taste Slate' : 'Curated Resonance Slate'}
               </div>
             </div>
 
             <MovieShelf
               title="For Your Taste"
-              eyebrow="CURATORIAL TASTE SELECTION"
+              eyebrow={recommendations ? 'RECOMMENDATION ENGINE • PERSONALIZED' : 'CURATORIAL TASTE SELECTION'}
               description="Curated shelf reflecting an affinity for atmospheric worldbuilding and non-linear narrative puzzles."
             >
               {forYourTasteMovies.map((movie) => (
@@ -477,7 +524,7 @@ export const DiscoverPage: React.FC = () => {
           {/* Shelf 3: Worth Exploring */}
           <MovieShelf
             title="Worth Exploring"
-            eyebrow="DISTINCTIVE VISIONS • FIXTURE DATA"
+            eyebrow={recommendations ? 'RECOMMENDATION ENGINE • DIVERSE DISCOVERY' : 'DISTINCTIVE VISIONS • FIXTURE DATA'}
             description="Films offering distinctive stylistic breadth—from nocturnal synth-noir to intricate reverse chronology."
           >
             {worthExploringMovies.map((movie) => (

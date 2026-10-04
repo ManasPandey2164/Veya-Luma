@@ -23,47 +23,70 @@ class UserPreferenceRepository:
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
+    async def get_all_taxonomy_nodes(self) -> Sequence[TaxonomyNode]:
+        """Loads all active canonical taxonomy nodes ordered by id."""
+        stmt = (
+            select(TaxonomyNode)
+            .where(TaxonomyNode.is_active.is_(True))
+            .order_by(TaxonomyNode.id.asc())
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
     async def get_preference(
         self,
-        user_id: UUID,
         taxonomy_node_id: int,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
     ) -> Optional[UserPreference]:
-        """Loads a specific taxonomy preference for an authenticated user."""
+        """Loads a specific taxonomy preference for an authenticated user or guest session."""
         stmt = (
             select(UserPreference)
             .options(selectinload(UserPreference.taxonomy_node))
-            .where(
-                UserPreference.user_id == user_id,
-                UserPreference.taxonomy_node_id == taxonomy_node_id,
-            )
+            .where(UserPreference.taxonomy_node_id == taxonomy_node_id)
         )
+        if user_id is not None:
+            stmt = stmt.where(UserPreference.user_id == user_id)
+        elif session_id is not None:
+            stmt = stmt.where(UserPreference.session_id == session_id)
+        else:
+            return None
         result = await self.db.execute(stmt)
         return result.scalars().first()
 
     async def get_user_preferences(
         self,
-        user_id: UUID,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
     ) -> Sequence[UserPreference]:
-        """Loads all explicit taxonomy preferences for an authenticated user."""
+        """Loads all explicit taxonomy preferences for an authenticated user or guest session."""
         stmt = (
             select(UserPreference)
             .options(selectinload(UserPreference.taxonomy_node))
-            .where(UserPreference.user_id == user_id)
-            .order_by(UserPreference.created_at.asc(), UserPreference.id.asc())
         )
+        if user_id is not None:
+            stmt = stmt.where(UserPreference.user_id == user_id)
+        elif session_id is not None:
+            stmt = stmt.where(UserPreference.session_id == session_id)
+        else:
+            return []
+        stmt = stmt.order_by(UserPreference.created_at.asc(), UserPreference.id.asc())
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
     async def upsert_user_preference(
         self,
-        user_id: UUID,
         taxonomy_node_id: int,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
         preference_value: float = 1.0,
         source: str = "explicit",
     ) -> UserPreference:
-        """Upserts an affinity preference for a taxonomy node."""
+        """Upserts an affinity preference for a taxonomy node for user or guest."""
         existing = await self.get_preference(
-            user_id=user_id, taxonomy_node_id=taxonomy_node_id
+            taxonomy_node_id=taxonomy_node_id,
+            user_id=user_id,
+            session_id=session_id,
         )
         if existing:
             existing.preference_value = preference_value
@@ -75,6 +98,7 @@ class UserPreferenceRepository:
 
         new_pref = UserPreference(
             user_id=user_id,
+            session_id=session_id,
             taxonomy_node_id=taxonomy_node_id,
             preference_value=preference_value,
             source=source,
@@ -87,12 +111,15 @@ class UserPreferenceRepository:
 
     async def delete_user_preference(
         self,
-        user_id: UUID,
         taxonomy_node_id: int,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
     ) -> bool:
         """Deletes a taxonomy preference safely."""
         existing = await self.get_preference(
-            user_id=user_id, taxonomy_node_id=taxonomy_node_id
+            taxonomy_node_id=taxonomy_node_id,
+            user_id=user_id,
+            session_id=session_id,
         )
         if existing:
             await self.db.delete(existing)

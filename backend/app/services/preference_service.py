@@ -1,6 +1,6 @@
 """Service layer for user explicit taxonomy preferences."""
 
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -40,9 +40,28 @@ class PreferenceService:
             )
         return node
 
-    async def get_user_preferences(self, user_id: UUID) -> UserPreferenceListResponse:
-        """Loads all explicit taxonomy preferences for an authenticated user."""
-        records = await self.pref_repo.get_user_preferences(user_id)
+    async def get_taxonomy_nodes(self) -> List[TaxonomyNodeSummary]:
+        """Loads all active canonical taxonomy nodes for preferences/onboarding."""
+        nodes = await self.pref_repo.get_all_taxonomy_nodes()
+        return [
+            TaxonomyNodeSummary(
+                id=n.id,
+                key=n.key,
+                label=n.label,
+                axis=n.axis,
+            )
+            for n in nodes
+        ]
+
+    async def get_preferences(
+        self,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
+    ) -> UserPreferenceListResponse:
+        """Loads all explicit taxonomy preferences for an authenticated user or guest session."""
+        records = await self.pref_repo.get_user_preferences(
+            user_id=user_id, session_id=session_id
+        )
         items: List[UserPreferenceResponse] = []
         for r in records:
             items.append(
@@ -63,13 +82,18 @@ class PreferenceService:
             )
         return UserPreferenceListResponse(items=items, total=len(items))
 
+    async def get_user_preferences(self, user_id: UUID) -> UserPreferenceListResponse:
+        """Backward-compatible wrapper for authenticated user preference loading."""
+        return await self.get_preferences(user_id=user_id)
+
     async def upsert_preference(
         self,
-        user_id: UUID,
         taxonomy_node_id: int,
         payload: UserPreferenceUpsertRequest,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
     ) -> UserPreferenceResponse:
-        """Upserts a taxonomy preference for an authenticated user."""
+        """Upserts a taxonomy preference for an authenticated user or guest session."""
         node = await self._verify_taxonomy_node(taxonomy_node_id)
 
         if payload.preference_value < -1.0 or payload.preference_value > 1.0:
@@ -79,8 +103,9 @@ class PreferenceService:
             )
 
         pref = await self.pref_repo.upsert_user_preference(
-            user_id=user_id,
             taxonomy_node_id=taxonomy_node_id,
+            user_id=user_id,
+            session_id=session_id,
             preference_value=payload.preference_value,
             source=payload.source,
         )
@@ -103,13 +128,15 @@ class PreferenceService:
 
     async def delete_preference(
         self,
-        user_id: UUID,
         taxonomy_node_id: int,
+        user_id: Optional[UUID] = None,
+        session_id: Optional[UUID] = None,
     ) -> bool:
         """Deletes a taxonomy preference safely."""
         deleted = await self.pref_repo.delete_user_preference(
-            user_id=user_id,
             taxonomy_node_id=taxonomy_node_id,
+            user_id=user_id,
+            session_id=session_id,
         )
         if deleted:
             await self.db.commit()

@@ -35,6 +35,9 @@ class MovieListItem(BaseModel):
     themes: list[str] = Field(default_factory=list, description="Canonical themes")
     moods: list[str] = Field(default_factory=list, description="Canonical moods")
     styles: list[str] = Field(default_factory=list, description="Canonical styles")
+    director: Optional[str] = Field(
+        default=None, description="Principal director name"
+    )
     poster_path: Optional[str] = Field(
         default=None, description="Relative artwork poster path"
     )

@@ -8,13 +8,13 @@
     "movie_credit": 203093,
     "taxonomy_node": 86,
     "movie_tag": 3705,
-    "app_user": 309,
-    "user_session": 414,
-    "user_movie_event": 90,
-    "movie_rating": 20,
-    "user_preference": 10,
-    "watchlist": 30,
-    "favourite": 20
+    "app_user": 567,
+    "user_session": 771,
+    "user_movie_event": 183,
+    "movie_rating": 44,
+    "user_preference": 55,
+    "watchlist": 61,
+    "favourite": 44
   },
   "movie_stats": {
     "total_movies": 909,
@@ -12042,15 +12042,15 @@
     "vote_count": true
   },
   "step17_stats": {
-    "user_movie_event_count": 90,
-    "movie_rating_count": 20,
-    "user_preference_count": 10,
-    "watchlist_count": 30,
-    "favourite_count": 20,
-    "user_movie_event_join_movie_count": 90,
-    "movie_rating_join_movie_count": 20,
-    "watchlist_join_movie_count": 30,
-    "favourite_join_movie_count": 20,
-    "user_preference_join_taxonomy_node_count": 10
+    "user_movie_event_count": 183,
+    "movie_rating_count": 44,
+    "user_preference_count": 55,
+    "watchlist_count": 61,
+    "favourite_count": 44,
+    "user_movie_event_join_movie_count": 183,
+    "movie_rating_join_movie_count": 44,
+    "watchlist_join_movie_count": 61,
+    "favourite_join_movie_count": 44,
+    "user_preference_join_taxonomy_node_count": 55
   }
 }
